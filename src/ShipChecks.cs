@@ -165,16 +165,16 @@ namespace FLScanIE
                 else
                     Logger.LogFileNotFound(file, ship.GetSetting("cockpit"));
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "cockpit");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "cockpit");
 
             if (ship.SettingExists("pilot_mesh"))
             {
                 if (!simpleNicknames.Contains(ship.GetSetting("pilot_mesh").Str(0)))
                     Logger.LogInvalidValue(file, ship.GetSetting("pilot_mesh"), "Simple doesn't exist!");
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "pilot_mesh");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "pilot_mesh");
         }
 
         private static void CheckCollGroup(string file, FLDataFile.Section collGrp)
