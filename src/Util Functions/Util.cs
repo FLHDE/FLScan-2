@@ -287,7 +287,7 @@ namespace FLScanIE.Util_Functions
             {
                 string name = set.settingName.ToLower();
 
-                if (name == "tex_shape" || name == "shape_name")
+                if (name == "tex_shape" || name == "shape_name" || name == "name")
                 {
                     string value = set.Str(0).ToLower();
                     values.Add(value);
