@@ -337,8 +337,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         break;
                     case "lod":
                         string obj = Util.TryGetStrSetting(section, "obj");
-                        if (obj != null && (obj.ToLower() != "root" && obj.ToLower() != "barrel"))
-                            Logger.LogInvalidValue(file, section.GetSetting("obj"), "Must be root or barrel!");
+                        if (obj != null && (obj.ToLower() != "root" && obj.ToLower() != "barrel" && obj.ToLower() != "guns"))
+                            Logger.LogInvalidValue(file, section.GetSetting("obj"), "Must be root, barrel, or guns!");
                         break;
                     case "armor":
                     case "internalfx":
