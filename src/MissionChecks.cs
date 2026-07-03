@@ -195,6 +195,12 @@ namespace FLScanIE
                             o.levels[level] = true;
                         }
                     }
+                    else if (set.settingName == "ship_archetype")
+                    {
+                        string shipArch = set.Str(0).ToLowerInvariant();
+                        if (!ShipChecks.ShipExists(shipArch))
+                            Logger.LogInvalidValue(npcShipPath, set, "Ship archetype doesn't exist!");
+                    }
                 }
                 if (!isMission)
                     npcships[o.nickname] = o;
