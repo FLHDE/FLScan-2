@@ -442,8 +442,8 @@ namespace FLScanIE
                             if (ls_attenCurve.ToLower() != "dynamic_direction")
                                 Logger.LogInvalidValue(file, section.GetSetting("atten_curve"), "Has to be DYNAMIC_DIRECTION.");
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "atten_curve");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "atten_curve");
 
                         if (ls_behavior != null)
                             Logger.LogInvalidValue(file, section.GetSetting("behavior"), "Invalid line in file.");
