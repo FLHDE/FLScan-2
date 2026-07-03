@@ -105,6 +105,30 @@ namespace FLScanIE
             }
         }
 
+        static void LoadDefaultShipClassMembers()
+        {
+            List<string> default_members = new List<string>()
+            {
+                "FIGHTER", "FREIGHTER", "TRANSPORT", "GUNBOAT", "CRUISER", "CAPITAL", "TRADELANE",
+                "JUMPGATE", "WEAPONS_PLATFORM", "DESTROYABLE_DEPOT", "SOLAR", "ANYTHING"
+            }.ConvertAll(m => m.ToLowerInvariant());
+
+            SHIPCLASS s = new SHIPCLASS();
+            s.nickname = "_";
+            s.members = default_members;
+            shipclasses[s.nickname] = s;
+
+            for (int i = 0; i < 10; ++i)
+            for (int j = 0; j < 10; ++j)
+            {
+                s.nickname = $"diff{i}{j}";
+                s.members = default_members;
+                shipclasses[s.nickname] = s;
+
+                default_members.Add($"d{i}{j}");
+            }
+        }
+
         static bool ShipClassMemberExists(string member)
         {
             foreach (SHIPCLASS c in shipclasses.Values)
@@ -497,6 +521,7 @@ namespace FLScanIE
 
                 LoadFormations();
                 LoadShipClasses();
+                LoadDefaultShipClassMembers();
                 LoadNPCShips();
                 LoadFactionProps();
                 LoadUniverse();
