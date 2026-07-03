@@ -391,16 +391,16 @@ namespace FLScanIE
                             if (!File.Exists(Path.Combine(Checker.flDataPath, basic_stars)))
                                 Logger.LogFileNotFound(file, section.GetSetting("basic_stars"));
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "basic_stars");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "basic_stars");
 
                         if (complex_stars != null)
                         {
                             if (!File.Exists(Path.Combine(Checker.flDataPath, complex_stars)))
                                 Logger.LogFileNotFound(file, section.GetSetting("complex_stars"));
                         }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "complex_stars");
+                        //else
+                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "complex_stars");
 
                         if (nebulae != null)
                         {
