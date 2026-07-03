@@ -82,8 +82,8 @@ namespace FLScanIE
                 if (!FXChecks.ExplosionExists(ship.GetSetting("explosion_arch").Str(0)))
                     Logger.LogInvalidValue(file, ship.GetSetting("explosion_arch"), "Explosion doesn't exist!");
             }
-            else
-                Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
+            //else
+            //    Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
 
             var surfaceEffects = ship.GetSettings("surface_hit_effects");
             foreach (var surfaceEffect in surfaceEffects)
@@ -124,8 +124,8 @@ namespace FLScanIE
                         Logger.LogInvalidValue(file, ship.GetSetting("num_exhaust_nozzles"), 
                                                "Isn't smaller or equal than number of HpEngines in cmp (" + engines_cmp + ")!");
                 }
-                else
-                    Logger.LogSettingNotFound(file, nick, "Ship", "explosion_arch");
+                //else
+                //    Logger.LogSettingNotFound(file, nick, "Ship", "num_exhaust_nozzles");
             }
 
             var hp_typeEntries = ship.GetSettings("hp_type");
