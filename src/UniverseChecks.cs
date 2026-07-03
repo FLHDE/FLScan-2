@@ -289,7 +289,7 @@ namespace FLScanIE
                         string name = Util.TryGetStrSetting(section, "name");
                         string local_fact = Util.TryGetStrSetting(section, "local_faction"); // TODO
                         string rpopd = Util.TryGetStrSetting(section, "rpop_solar_detection");
-                        float farclip = float.Parse(Util.TryGetStrSetting(section, "space_farclip"));
+                        string farclip = Util.TryGetStrSetting(section, "space_farclip");
 
                         //if (name != null && name.ToLower() != sysnick)
                         //Logger.LogInvalidValue(file, section.GetSetting("name"), "Should equal system-nickname!");
@@ -298,12 +298,16 @@ namespace FLScanIE
                         if (rpopd != null)
                             if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true")
                                 Logger.LogInvalidValue(file, section.GetSetting("rpopd"), "Must be true or false.");
-                        if (farclip < 1000)
-                            Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Must be at least 1000.");
-                        else if (farclip > 999)
-                            break;
-                        else
-                            Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Invalid data type, expected numeric value.");
+                        if (farclip != null)
+                        {
+                            float farclip_float = float.Parse(farclip);
+                            if (farclip_float < 1000)
+                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Must be at least 1000.");
+                            else if (farclip_float > 999)
+                                break;
+                            else
+                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Invalid data type, expected numeric value.");
+                        }
                         break;
                     case "texturepanels":
                         val = Util.TryGetStrSetting(section, "file");
