@@ -193,7 +193,8 @@ namespace FLScanIE
             List<string> star_lensGlowNicknames = new List<string>();
             List<string> star_spineNicknames = new List<string>();
 
-            SolarChecks.starFiles = Checker.flIni.GetSettings("Data", "stars").Select(s => s.Str(0)).ToArray();
+            SolarChecks.starFiles = Checker.flIni.GetSettings("Data", "stars").Select(s => s.Str(0))
+                .Union(new List<string> { Checker.flDataPath + "\\SOLAR\\stararch.ini" }).ToArray();
             foreach (var starIni in SolarChecks.starFiles)
             {
                 FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, starIni), true);
