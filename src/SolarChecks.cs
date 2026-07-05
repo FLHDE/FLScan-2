@@ -53,7 +53,7 @@ namespace FLScanIE
                 {
                     case "DA_archetype":
                     case "material_library":
-                        if (!File.Exists(Path.Combine(Checker.flDataPath, solar.Str(0))))
+                        if (!Checker.FileExists(solar.Str(0)))
                             Logger.LogFileNotFound(file, solar);
                         break;
                     case "fuse":
@@ -91,7 +91,7 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
-            if (!File.Exists(Path.Combine(Checker.flDataPath, ini.GetSetting("Texture", "file").Str(0))))
+            if (!Checker.FileExists(ini.GetSetting("Texture", "file").Str(0)))
                 Logger.LogFileNotFound(file, ini.GetSetting("Texture", "file"));
 
             string[] shapes = ini.GetSettings("Texture", "tex_shape").Select(s => s.Str(0)).ToArray();
@@ -142,7 +142,7 @@ namespace FLScanIE
                 {
                     case "DA_archetype":
                     case "material_library":
-                        if (!File.Exists(Path.Combine(Checker.flDataPath, asteroid.Str(0))))
+                        if (!Checker.FileExists(asteroid.Str(0)))
                             Logger.LogFileNotFound(file, asteroid);
                         break;
                     case "explosion_arch":

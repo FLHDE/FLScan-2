@@ -92,13 +92,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 if (hasArchetype.Contains(cat))
                 {
                     string arch = Util.TryGetStrSetting(section, "da_archetype");
-                    if (arch != null && !File.Exists(Path.Combine(Checker.flDataPath, arch)))
+                    if (arch != null && !Checker.FileExists(arch))
                         Logger.LogFileNotFound(file, section.GetSetting("da_archetype"));
                 }
                 if (hasMaterial.Contains(cat))
                 {
                     string mat = Util.TryGetStrSetting(section, "material_library");
-                    if (mat != null && !File.Exists(Path.Combine(Checker.flDataPath, mat)))
+                    if (mat != null && !Checker.FileExists(mat))
                         Logger.LogFileNotFound(file, section.GetSetting("material_library"));
                 }
                 if (hasLootAppearance.Contains(cat))
@@ -205,7 +205,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string thr_hp_particles = Util.TryGetStrSetting(section, "hp_particles");
                         string thr_particles = Util.TryGetStrSetting(section, "particles");
 
-                        if (thr_hp_particles != null && !Checker.DisableUTF && !equipUtf[cat][nick].HardpointExists(thr_hp_particles))
+                        if (thr_hp_particles != null && !Checker.DisableUTF && equipUtf[cat].ContainsKey(nick) && !equipUtf[cat][nick].HardpointExists(thr_hp_particles))
                             Logger.LogHardpoint(file, section.GetSetting("hp_particles"));
                         if (thr_particles != null && !FXChecks.EffectExists(thr_particles))
                             Logger.LogInvalidValue(file, section.GetSetting("particles"), "Effect doesn't exist!");
@@ -432,8 +432,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                             Logger.LogInvalidValue(file, addonSettings[i], "Equip doesn't exist!", equip);
                                         if (Checker.DisableUTF)
                                             break;
-                                        if (hp != "internal" && !shipUtf.HardpointExists(hp))
-                                            Logger.LogHardpoint(file, addonSettings[i], hp);
+                                        if (hp != "internal")
+                                        {
+                                            if (shipUtf != null && !shipUtf.HardpointExists(hp)
+                                                || shipUtf == null && !Checker.AssumeVanillaFilesExist)
+                                                Logger.LogHardpoint(file, addonSettings[i], hp);
+                                        }
+                                            
                                     }
                                     else
                                         Logger.LogArgCount(file, addonSettings[i], 3);
@@ -448,11 +453,11 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                 break;
                         }
 
-                        if (item_icon != null && !File.Exists(Path.Combine(Checker.flDataPath, item_icon)))
+                        if (item_icon != null && !Checker.FileExists(item_icon))
                             Logger.LogFileNotFound(file, section.GetSetting("item_icon"));
-                        if (material_library != null && !File.Exists(Path.Combine(Checker.flDataPath, material_library)))
+                        if (material_library != null && !Checker.FileExists(material_library))
                             Logger.LogFileNotFound(file, section.GetSetting("material_library"));
-                        if (shop_archetype != null && !File.Exists(Path.Combine(Checker.flDataPath, shop_archetype)))
+                        if (shop_archetype != null && !Checker.FileExists(shop_archetype))
                             Logger.LogFileNotFound(file, section.GetSetting("shop_archetype"));
 
                         if (msg_id_prefix != null && !AudioChecks.VoiceMsgExists(msg_id_prefix))

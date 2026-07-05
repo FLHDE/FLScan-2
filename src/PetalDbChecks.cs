@@ -65,7 +65,7 @@ namespace FLScanIE
                                     petalUTF[key].Add(nick, utf);
                             }
                         }
-                        else
+                        else if (!Checker.HasVanillaFile(setting.Str(1)))
                             Logger.LogFileNotFound(pentalDBfile, setting);
                     }
                 }

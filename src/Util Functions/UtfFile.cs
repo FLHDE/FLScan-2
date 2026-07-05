@@ -41,6 +41,11 @@ namespace FLScanIE.Util_Functions
             parseNode(buf, nodeBlockOffset, 0, stringBlockOffset, dataBlockOffset, depth);
         }
 
+        public UtfFile()
+        {
+
+        }
+
         private void parseNode(byte[] buf, int nodeBlockStart, int nodeStart, int stringBlockOffset, int dataBlockOffset, string depth)
         {
             int offset = nodeBlockStart + nodeStart;
@@ -86,6 +91,9 @@ namespace FLScanIE.Util_Functions
 
         public bool HardpointExists(string hp)
         {
+            if (Checker.AssumeVanillaFilesExist && filePath == string.Empty)
+                return true;
+
             hp = hp.ToLower();
             foreach (var hardpoint in hardpoints)
             {

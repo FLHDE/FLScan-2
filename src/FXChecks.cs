@@ -82,14 +82,14 @@ namespace FLScanIE
             if (visEffect.SettingExists("alchemy"))
             {
                 alchemy = visEffect.GetSetting("alchemy").Str(0);
-                if (!File.Exists(Path.Combine(Checker.flDataPath, alchemy)))
+                if (!Checker.FileExists(alchemy))
                     Logger.LogFileNotFound(file, visEffect.GetSetting("alchemy"));
             }
 
             if (visEffect.SettingExists("textures"))
             {
                 alchemy = visEffect.GetSetting("textures").Str(0);
-                if (!File.Exists(Path.Combine(Checker.flDataPath, alchemy)))
+                if (!Checker.FileExists(alchemy))
                     Logger.LogFileNotFound(file, visEffect.GetSetting("textures"));
             }
 

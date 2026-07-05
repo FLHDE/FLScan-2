@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Windows.Forms.VisualStyles;
 using FLScanIE.Logging;
 using FLScanIE.Util_Functions;
 
@@ -31,6 +32,8 @@ namespace FLScanIE
         public static FLDataFile flIni;
         public static string flDataPath;
         private static bool disableUTF;
+        private static bool assumeVanillaFilesExist;
+        private static HashSet<string> vanillaFiles;
 
         public static FLDataFile confIni;
 
@@ -40,6 +43,12 @@ namespace FLScanIE
             set { disableUTF = Properties.Settings.Default.setDisableUTF = value; }
         }
 
+        public static bool AssumeVanillaFilesExist
+        {
+            get { return assumeVanillaFilesExist; }
+            set { assumeVanillaFilesExist = Properties.Settings.Default.setAssumeVanillaFilesExist = value; }
+        }
+
         static Checker()
         {
             confIni = new FLDataFile("conf.ini", false);
@@ -47,6 +56,9 @@ namespace FLScanIE
 
         public static bool Parse(string flPath)
         {
+            if (assumeVanillaFilesExist)
+                ParseVanillaFiles();
+
             string flExePath = Path.Combine(flPath, "EXE");
             try
             {
@@ -108,6 +120,37 @@ namespace FLScanIE
         private static bool ShouldCheck(Checks check)
         {
             return (Checks & check) != Checks.None;
+        }
+
+        private static void ParseVanillaFiles()
+        {
+            const string vanillaFilesPath = "vanilla_files.txt";
+            if (!File.Exists(vanillaFilesPath))
+                return;
+
+            vanillaFiles = new HashSet<string>();
+
+            string[] files = File.ReadAllLines(vanillaFilesPath);
+            foreach (string file in files)
+            {
+                vanillaFiles.Add(file.ToLowerInvariant());
+            }
+        }
+
+        public static bool FileExists(string relFilePath)
+        {
+            return File.Exists(Path.Combine(flDataPath, relFilePath)) || HasVanillaFile(relFilePath);
+        }
+
+        internal static bool HasVanillaFile(string relFilePath)
+        {
+            if (!assumeVanillaFilesExist)
+                return false;
+            if (vanillaFiles.Contains(relFilePath.ToLowerInvariant()))
+                return true;
+
+            string absPath = relFilePath.ToLowerInvariant().Replace(flDataPath.ToLowerInvariant(), string.Empty).TrimStart('\\');
+            return vanillaFiles.Contains(absPath);
         }
     }
 }

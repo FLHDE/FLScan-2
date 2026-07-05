@@ -30,6 +30,7 @@ namespace FLScanIE
             updateUI = new UpdateUIAddLogDelegate(UpdateUIAddLog);
             Logger.HandleLog += HandleLog;
             checkDisableUTF.Checked = Checker.DisableUTF = Properties.Settings.Default.setDisableUTF;
+            checkVanillaFilesExist.Checked = Checker.AssumeVanillaFilesExist = Properties.Settings.Default.setAssumeVanillaFilesExist;
             InitFilter();
         }
 
@@ -300,6 +301,11 @@ namespace FLScanIE
         private void checkDisableUTF_CheckedChanged(object sender, EventArgs e)
         {
             Checker.DisableUTF = checkDisableUTF.Checked;
+        }
+
+        private void checkVanillaFilesExist_CheckedChanged(object sender, EventArgs e)
+        {
+            Checker.AssumeVanillaFilesExist = checkVanillaFilesExist.Checked;
         }
     }
 }

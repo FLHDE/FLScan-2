@@ -121,6 +121,9 @@ namespace FLScanIE
             if (options.ContainsKey("--disable-utf"))
                 Checker.DisableUTF = true;
 
+            if (options.ContainsKey("--assume-vanilla-files-exist"))
+                Checker.AssumeVanillaFilesExist = true;
+
             if (options.ContainsKey("--disable-all-checks"))
             {
                 Checker.Checks = Checks.None;

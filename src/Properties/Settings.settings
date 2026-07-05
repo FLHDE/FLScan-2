@@ -2,9 +2,6 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="FLScanIE.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="setFlDir" Type="System.String" Scope="User">
-      <Value Profile="(Default)">C:\Program Files (x86)\Microsoft Games\Freelancer</Value>
-    </Setting>
     <Setting Name="setCheckedFilters" Type="System.Int32[]" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
@@ -19,6 +16,12 @@
     </Setting>
     <Setting Name="setCheckedChecks" Type="System.Int32[]" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="setFlDir" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Program Files (x86)\Microsoft Games\Freelancer</Value>
+    </Setting>
+    <Setting Name="setAssumeVanillaFilesExist" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>

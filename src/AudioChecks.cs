@@ -33,8 +33,10 @@ namespace FLScanIE
 
             foreach (var fuseEffect in fuseEffects)
             {
-                if (!File.Exists(Checker.flDataPath + Path.DirectorySeparatorChar + fuseEffect.Str(0)))
+                if (!Checker.FileExists(Path.DirectorySeparatorChar + fuseEffect.Str(0)))
+                {
                     Logger.LogFileNotFound(file, fuseEffect);
+                }   
             }
         }
 

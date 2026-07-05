@@ -68,6 +68,9 @@ namespace FLScanIE.Util_Functions
         {
             if (setting.NumValues() == 1 && !File.Exists(Path.Combine(prefix, setting.Str(0))))
             {
+                if (Checker.HasVanillaFile(file))
+                    return true;
+
                 Logger.LogFileNotFound(file, setting);
                 return false;
             }
@@ -180,7 +183,7 @@ namespace FLScanIE.Util_Functions
                         }
                     }
                 }
-                else
+                else if (!Checker.HasVanillaFile(utfFile))
                     Logger.LogFileNotFound(file, section.GetSetting(utf));
             }
             else if(errorUtf)
@@ -275,7 +278,7 @@ namespace FLScanIE.Util_Functions
 
         public static string[] ParseShapeFile(string file, FLDataFile.Setting refSet, string refFile)
         {
-            if (!File.Exists(Path.Combine(Checker.flDataPath, file)))
+            if (!Checker.FileExists(file))
             {
                 Logger.LogFileNotFound(refFile, refSet);
                 return new string[0];
