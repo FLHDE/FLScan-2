@@ -34,6 +34,7 @@ namespace FLScanIE
                 {
                     Console.Write(ex.Message);
                     Console.WriteLine(ex.StackTrace);
+                    Environment.ExitCode = 1;
                 }
                 finally
                 {
