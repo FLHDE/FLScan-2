@@ -20,6 +20,9 @@ namespace FLScanIE.Logging
         private static readonly Queue<LogEntry> logs;
         private static readonly Thread logThread;
         private static bool abort;
+        public static bool LoggedWarning { get; private set; }
+        private static bool loggedError;
+        private static bool loggedFatal;
 
         public static event HandleLogDelegate HandleLog;
 
@@ -27,6 +30,7 @@ namespace FLScanIE.Logging
         {
             logs = new Queue<LogEntry>(10000);
             abort = false;
+            LoggedWarning = loggedError = loggedFatal = false;
             logThread = new Thread(HandleLogs);
             logThread.Priority = ThreadPriority.BelowNormal;
             logThread.Name = "LoggerThread";
@@ -337,6 +341,11 @@ namespace FLScanIE.Logging
                     return;
                 Thread.Sleep(100);
             }
+        }
+
+        public static bool LoggedErrorOrFatal()
+        {
+            return loggedError || loggedFatal;
         }
     }
 }

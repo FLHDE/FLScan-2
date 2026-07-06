@@ -23,7 +23,7 @@ namespace FLScanIE
         [STAThread]
         static void Main(string[] args)
         {
-            if(args.Length == 0)
+            if (args.Length == 0)
                 RunGui();
             else
                 try
@@ -61,6 +61,8 @@ namespace FLScanIE
 
             Dictionary<string, string> options = new Dictionary<string, string>(args.Length);
 
+            bool treatWarningsAsErrors = false;
+
             foreach (var arg in args)
             {
                 string[] parts = arg.Split('=');
@@ -80,6 +82,7 @@ namespace FLScanIE
                 Console.WriteLine("\t\t--disable-all-checks");
                 Console.WriteLine("\t\t--enable-<CheckName>");
                 Console.WriteLine("\t\t--disable-<CheckName>");
+                Console.WriteLine("\t\t--treat-warnings-as-errors");
                 Console.WriteLine("\tLogging:");
                 Console.WriteLine("\t\t--log-html=<FileName>");
                 Console.WriteLine("\t\t--log-file=<FileName>");
@@ -87,7 +90,7 @@ namespace FLScanIE
                 Console.WriteLine("\tChecknames:");
                 foreach (var check in Enum.GetNames(typeof(Checks)))
                 {
-                    if(check != "None")
+                    if (check != "None")
                         Console.WriteLine("\t\t" + check);
                 }
                 Console.WriteLine();
@@ -107,7 +110,7 @@ namespace FLScanIE
                 WriteLineToFile(fs, "<html><body><h2>FLScanII Log</h2><table width=\"100%\" border=\"1\">");
                 Logger.HandleLog += LogToHTML;
             }
-            else if(options.ContainsKey("--log-file"))
+            else if (options.ContainsKey("--log-file"))
             {
                 fs = File.OpenWrite(options["--log-file"]);
                 Logger.HandleLog += LogToFile;
@@ -154,6 +157,9 @@ namespace FLScanIE
                 }
             }
 
+            if (options.ContainsKey("--treat-warnings-as-errors"))
+                treatWarningsAsErrors = true;
+
             if (options.ContainsKey("--flpath"))
             {
                 Logger.ILog("Scan started");
@@ -171,6 +177,9 @@ namespace FLScanIE
             {
                 WriteLineToFile(fs, "</table></body></html>");
             }
+
+            if (Logger.LoggedErrorOrFatal() || (treatWarningsAsErrors && Logger.LoggedWarning))
+                Environment.ExitCode = 1;
         }
 
         private static void LogToConsole(LogEntry log)
