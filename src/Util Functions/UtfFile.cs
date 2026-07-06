@@ -41,10 +41,6 @@ namespace FLScanIE.Util_Functions
             parseNode(buf, nodeBlockOffset, 0, stringBlockOffset, dataBlockOffset, depth);
         }
 
-        public UtfFile()
-        {
-
-        }
 
         private void parseNode(byte[] buf, int nodeBlockStart, int nodeStart, int stringBlockOffset, int dataBlockOffset, string depth)
         {
