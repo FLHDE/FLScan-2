@@ -45,7 +45,21 @@ namespace FLScanIE.Logging
         {
             if(log == null)
                 throw new ArgumentNullException("log");
+
             logs.Enqueue(log);
+
+            switch (log.Loglevel)
+            {
+                case LogLevel.fatal:
+                    loggedFatal = true;
+                    break;
+                case LogLevel.error:
+                    loggedError = true;
+                    break;
+                case LogLevel.warning:
+                    LoggedWarning = true;
+                    break;
+            }
         }
 
         /// <summary>
@@ -328,7 +342,7 @@ namespace FLScanIE.Logging
                 else
                 {
                     while (logs.Count != 0)
-                        OnHandleLog(logs.Dequeue());
+                        OnHandleLog(logs?.Dequeue());
                 }
             }
         }
