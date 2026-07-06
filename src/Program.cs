@@ -55,10 +55,16 @@ namespace FLScanIE
             Application.Run(new MainWindow());
         }
 
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetConsoleWindow();
+
         private static void RunCommandline(string[] args)
         {
-            Console.WindowWidth = 160;
-            Console.BufferHeight = 9000;
+            if (GetConsoleWindow() != IntPtr.Zero)
+            {
+                Console.WindowWidth = 160;
+                Console.BufferHeight = 9000;
+            }
 
             Dictionary<string, string> options = new Dictionary<string, string>(args.Length);
 
