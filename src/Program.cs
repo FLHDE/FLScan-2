@@ -79,6 +79,7 @@ namespace FLScanIE
                 Console.WriteLine("\t\t--flpath");
                 Console.WriteLine("\tOptional:");
                 Console.WriteLine("\t\t--disable-utf");
+                Console.WriteLine("\t\t--assume-vanilla-files-exist");
                 Console.WriteLine("\t\t--disable-all-checks");
                 Console.WriteLine("\t\t--enable-<CheckName>");
                 Console.WriteLine("\t\t--disable-<CheckName>");
