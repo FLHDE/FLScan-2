@@ -67,7 +67,9 @@ namespace FLScanIE.Util_Functions
                 for (int i = stringBlockOffset + nameOffset; i < buf.Length && buf[i] != 0; i++, len++) ;
                 string name = System.Text.Encoding.ASCII.GetString(buf, stringBlockOffset + nameOffset, len);
                 names.Add(name);
-                if (depth.EndsWith("Hardpoints+Fixed+") || depth.EndsWith("Hardpoints+Revolute+"))
+                // Node names are case-insensitive, so e.g. "hardpoints\fixed" counts too
+                string lowerDepth = depth.ToLowerInvariant();
+                if (lowerDepth.EndsWith("hardpoints+fixed+") || lowerDepth.EndsWith("hardpoints+revolute+"))
                 {
                     hardpoints.Add(name);
                 }

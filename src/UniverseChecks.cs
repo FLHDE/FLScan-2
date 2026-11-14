@@ -23,6 +23,8 @@ namespace FLScanIE
         private static Dictionary<string, Dictionary<string, string[]>> objectNicks;
 
         private static string[] popTypes = Util.LoadConfig("ZonePopTypes");
+        // Faction ([Group]) nicknames from initialworld.ini (lowercase), or null if that file isn't present
+        private static HashSet<string> factionNicks;
         private static string[] hotspotNames = Util.LoadConfig("BaseHotspotNames");
         private static string[] hotspotBehaviors = Util.LoadConfig("BaseHotspotBehaviors");
 
@@ -286,10 +288,13 @@ namespace FLScanIE
                                 case "property_fog_color":
                                     Util.CheckNumberOfArgs(setting, file, 3);
                                     break;
-                                case "pop_types":
-                                    val = val.ToLower();
-                                    if (!popTypes.Contains(val))
-                                        Logger.LogInvalidValue(file, setting, "Invalid pop_type!");
+                                case "pop_type":
+                                    // A list of population types and factions
+                                    foreach (var popType in setting.values.Select(v => v.ToString().Trim()))
+                                    {
+                                        if (!PopTypeValid(popType))
+                                            Logger.LogInvalidValue(file, setting, "Invalid pop_type!", popType);
+                                    }
                                     break;
                                 case "music":
                                     if(!AudioChecks.SoundExists(val))
@@ -722,13 +727,22 @@ asteroid_loot_commodity = commodity_gold*/
                         /* rock_objects gas_danger_objects mine_danger_objects danger_density_med danger_density_low danger_density_high Object_density_low Object_density_med Object_density_high nebula*/
                         break;
                     case "exclusion zones":
-                        Util.CheckFileExists(sec, file, "zone_shell", Checker.flDataPath);
-                        Util.CheckFileExists(sec, file, "zone_shell", Checker.flDataPath);
-                        string exclusion = Util.TryGetStrSetting(sec, "exclusion");
-                        if (exclusion != null)
+                        // One section lists many exclusion zones, each with its own optional settings
+                        foreach (var setting in sec.settings)
                         {
-                            if (!ThingExistsInSystem(sys, exclusion, "zone"))
-                                Logger.LogInvalidValue(file, sec.GetSetting("exclusion"), "Zone not found!");
+                            if (setting.NumValues() == 0)
+                                continue;
+
+                            switch (setting.settingName.ToLower())
+                            {
+                                case "exclusion":
+                                    if (!ZoneExists(sys, setting.Str(0)))
+                                        Logger.LogInvalidValue(file, setting, "Zone not found!");
+                                    break;
+                                case "zone_shell":
+                                    Util.CheckFileExists(setting, file, Checker.flDataPath);
+                                    break;
+                            }
                         }
                         break;
                     case "band":
@@ -772,7 +786,16 @@ asteroid_loot_commodity = commodity_gold*/
             UniverseChecks.systemNicks = systemNicks.ToArray();
 
             UniverseChecks.objectNicks = objectNicks.ToDictionary(o => o.Key, o => o.Value.ToDictionary(s => s.Key, s => s.Value.ToArray()));
-            
+
+            // initialworld.ini isn't referenced by freelancer.ini, but it's always loaded by the game
+            factionNicks = null;
+            if (Checker.FileExistsOnDisk("initialworld.ini"))
+            {
+                FLDataFile initialWorld = new FLDataFile(Path.Combine(Checker.flDataPath, "initialworld.ini"), true);
+                factionNicks = new HashSet<string>(initialWorld.GetSettings("Group", "nickname")
+                    .Where(s => s.NumValues() > 0).Select(s => s.Str(0).ToLower()));
+            }
+
             Logger.ILog("Finished Universe-Folder");
         }
 
@@ -885,6 +908,16 @@ asteroid_loot_commodity = commodity_gold*/
                         break;
                 }
             }
+        }
+
+        /// <summary>
+        /// True if the value is a known population type or a faction nickname. If the factions are unknown
+        /// (initialworld.ini isn't present), any value that isn't a known population type is accepted.
+        /// </summary>
+        private static bool PopTypeValid(string popType)
+        {
+            popType = popType.ToLower();
+            return popTypes.Contains(popType) || factionNicks == null || factionNicks.Contains(popType);
         }
 
         public static bool SystemExists(string nick)
