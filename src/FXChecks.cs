@@ -150,7 +150,7 @@ namespace FLScanIE
         private static void CheckFuseFile(string file)
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
-            var fuseEffects = ini.GetSettings("start_effect", "effect");
+            var fuseEffects = ini.GetSettings("start_effect", "effect").Union(ini.GetSettings("start_cam_particles", "effect"));
 
             foreach (var fuseEffect in fuseEffects)
             {

@@ -71,6 +71,7 @@ namespace FLScanIE
             if (assumeVanillaFilesExist && !ParseVanillaFiles())
                 return false;
 
+            FLDataFile.ResetReportedEmptyFiles();
             string flExePath = Path.Combine(flPath, "EXE");
             try
             {
@@ -131,7 +132,10 @@ namespace FLScanIE
             if (ShouldCheck(Checks.Equipment))
                 Util.RunCheck(EquipmentChecks.CheckEquipmentFolder, "equip");
             if (ShouldCheck(Checks.Missions))
+            {
                 Util.RunCheck(MissionChecks.CheckForMissingFormations, "missions");
+                Util.RunCheck(MissionFileChecks.CheckMissionFiles, "mission files");
+            }
             if (ShouldCheck(Checks.Fonts))
                 Util.RunCheck(FontChecks.CheckFontFolder, "fonts");
         }
@@ -218,7 +222,11 @@ namespace FLScanIE
             string dataPath = flDataPath.ToLowerInvariant();
             if (path.StartsWith(dataPath))
                 path = path.Substring(dataPath.Length);
-            return path.Replace('/', '\\').TrimStart('\\');
+            path = path.Replace('/', '\\');
+            // Repeated separators are allowed, like Windows does (vanilla mission scripts use them)
+            while (path.Contains("\\\\"))
+                path = path.Replace("\\\\", "\\");
+            return path.TrimStart('\\');
         }
 
         /// <summary>

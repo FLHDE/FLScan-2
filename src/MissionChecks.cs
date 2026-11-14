@@ -63,6 +63,13 @@ namespace FLScanIE
         static Dictionary<string, NPCSHIPARCH> npcships = new Dictionary<string, NPCSHIPARCH>();
         static Dictionary<string, FACTIONPROPS> factionprops = new Dictionary<string, FACTIONPROPS>();
         static Dictionary<string, ZONE> zones = new Dictionary<string, ZONE>();
+        // The nicknames (lowercase) of the ships in the npcships.ini of each mission
+        static Dictionary<string, HashSet<string>> missionNpcShips = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The folders of the single-player missions in DATA\MISSIONS. The game's list of missions is hardcoded.
+        /// </summary>
+        public static readonly string[] Missions = { "M01A", "M01B", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13" };
         // Encounter files are checked again for each zone and faction that uses them. Errors that don't depend
         // on the faction are only reported once (key: setting description + message).
         static HashSet<string> reportedEncounterErrors = new HashSet<string>();
@@ -170,7 +177,11 @@ namespace FLScanIE
             return false;
         }
         
-        static void CheckNPCShips(string npcShipPath, bool isMission)
+        /// <summary>
+        /// Checks an npcships.ini file and adds its ships to <see cref="npcships"/>, or to
+        /// <see cref="missionNpcShips"/> if it's the npcships.ini of a mission (mission isn't null).
+        /// </summary>
+        static void CheckNPCShips(string npcShipPath, string mission)
         {
             FLDataFile file = LoadIni(npcShipPath);
             if (file == null)
@@ -241,9 +252,16 @@ namespace FLScanIE
                         if (!ShipChecks.ShipExists(shipArch))
                             Logger.LogInvalidValue(npcShipPath, set, "Ship archetype doesn't exist!");
                     }
+                    else if (set.settingName.ToLowerInvariant() == "loadout")
+                    {
+                        if (!LoadoutChecks.LoadoutExists(set.Str(0)))
+                            Logger.LogInvalidValue(npcShipPath, set, "Loadout doesn't exist!");
+                    }
                 }
-                if (!isMission)
+                if (mission == null)
                     npcships[o.nickname] = o;
+                else
+                    missionNpcShips[mission].Add(o.nickname);
             }
         }
 
@@ -258,9 +276,12 @@ namespace FLScanIE
 
         static void LoadNPCShips()
         {
-            CheckNPCShips("MISSIONS\\npcships.ini", false);
-            foreach (var mission in new[] { "M01a", "M01b", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13" })
-                CheckNPCShips("MISSIONS\\" + mission + "\\npcships.ini", true);
+            CheckNPCShips("MISSIONS\\npcships.ini", null);
+            foreach (var mission in Missions)
+            {
+                missionNpcShips[mission] = new HashSet<string>();
+                CheckNPCShips("MISSIONS\\" + mission + "\\npcships.ini", mission);
+            }
         }
 
         static void LoadFactionProps()
@@ -587,6 +608,21 @@ namespace FLScanIE
             }
         }
 
+        public static bool FormationExists(string nick)
+        {
+            return formations.ContainsKey(nick.ToLowerInvariant());
+        }
+
+        /// <summary>
+        /// True if the NPC ship is defined in the npcships.ini of the mission or in the global one.
+        /// </summary>
+        public static bool NpcShipExists(string nick, string mission)
+        {
+            nick = nick.ToLowerInvariant();
+            HashSet<string> ships;
+            return npcships.ContainsKey(nick) || missionNpcShips.TryGetValue(mission, out ships) && ships.Contains(nick);
+        }
+
         static void LoadUniverse()
         {
             FLDataFile file = LoadIni("UNIVERSE\\universe.ini");
@@ -613,6 +649,7 @@ namespace FLScanIE
                 formations.Clear();
                 shipclasses.Clear();
                 npcships.Clear();
+                missionNpcShips.Clear();
                 factionprops.Clear();
 				zones.Clear();
                 reportedEncounterErrors.Clear();

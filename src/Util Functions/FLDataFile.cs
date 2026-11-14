@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
+using FLScanIE.Logging;
+
 /*  The following notes on bin file encoding were written by Christopher Wellons <ccw129@psu.edu>
     and were taken from http://www.nullprogram.com/projects/bini/
 
@@ -223,6 +225,17 @@ namespace FLScanIE.Util_Functions
         public bool IsVanillaCopy = false;
 
         /// <summary>
+        /// Empty files that have been reported, so each one is only reported once per scan
+        /// </summary>
+        private static HashSet<string> reportedEmptyFiles = new HashSet<string>();
+
+        public static void ResetReportedEmptyFiles()
+        {
+            lock (reportedEmptyFiles)
+                reportedEmptyFiles.Clear();
+        }
+
+        /// <summary>
         /// The ini file contents - decrypted if necessary
         /// </summary>
         private string contents;
@@ -297,9 +310,22 @@ namespace FLScanIE.Util_Functions
             contents += sr.ReadToEnd();
             sr.Close();
 
-            // If the file is empty then this is an error
+            // An empty file is an error, but it doesn't stop the scan: it's reported once and has no sections
             if (buf.Length == 0)
-                throw new FLDataFileException("File is empty");
+            {
+                lock (reportedEmptyFiles)
+                {
+                    if (reportedEmptyFiles.Add(filePath.ToLowerInvariant()))
+                    {
+                        // Shown relative to DATA, like the files of other errors
+                        string dataPath = Checker.flDataPath;
+                        string shownPath = dataPath != null && filePath.StartsWith(dataPath, StringComparison.OrdinalIgnoreCase)
+                            ? filePath.Substring(dataPath.Length).TrimStart('\\', '/') : filePath;
+                        Logger.ELog(shownPath + ": The file is empty!");
+                    }
+                }
+                return;
+            }
 
             // If this is a bini file then decode it
             if (buf.Length >= 12 && buf[0] == 'B' && buf[1] == 'I' && buf[2] == 'N' && buf[3] == 'I')
