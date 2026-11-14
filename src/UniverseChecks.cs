@@ -41,7 +41,6 @@ namespace FLScanIE
 
         public static void CheckUniverseFolder()
         {
-            // TODO: check for duplicate nicknames
             Logger.ILog("Checking Universe-Folder");
             Util.RunChecks(CheckUniverseFile, universeFiles);
             Util.RunChecks(CheckBaseFile, baseFiles.Select(b => b.Value));
@@ -572,9 +571,10 @@ namespace FLScanIE
                             Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "type");
                         break;
                     case "object":
-                        // TODO [Object] pilot => [Pilot]
-
                         nick = Util.TryGetStrSetting(section, "nickname");
+                        string o_pilot = Util.TryGetStrSetting(section, "pilot");
+                        if (o_pilot != null && !MissionFileChecks.PilotExists(o_pilot))
+                            Logger.LogInvalidValue(file, section.GetSetting("pilot"), "Pilot doesn't exist!");
                         Util.CheckIDName(section, "ids_name", nick, file);
                         Util.CheckIDInfo(section, "ids_info", nick, file);
 

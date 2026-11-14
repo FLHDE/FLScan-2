@@ -12,8 +12,6 @@ namespace FLScanIE
     public static class EquipmentChecks
     {
         /*
-TODO: check if [Muniton] hp_trail_parent exists in [Gun] DA_archetype
-TODO: check if [Muniton] weapon_type equals [Gun] weapon_type
 TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't referenced in freelancer.ini
          */
 
@@ -310,7 +308,6 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     case "gun":
                     /*
 [Gun] light_anim => [LightAnim] TODO
-[Gun] projectile_archetype => TODO save reference for munition checks
                      */
                         string gun_snd = Util.TryGetStrSetting(section, "dry_fire_sound");
                         string gun_particle = Util.TryGetStrSetting(section, "flash_particle_name");
@@ -352,6 +349,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string mun_motor = Util.TryGetStrSetting(section, "motor");
                         string mun_snd = Util.TryGetStrSetting(section, "one_shot_sound");
                         string mun_seeker = Util.TryGetStrSetting(section, "seeker");
+                        string mun_weaponType = Util.TryGetStrSetting(section, "weapon_type");
+                        string mun_trailParent = Util.TryGetStrSetting(section, "hp_trail_parent");
 
                         if(mun_const_eff != null && !FXChecks.EffectExists(mun_const_eff))
                             Logger.LogInvalidValue(file, section.GetSetting("const_effect"), "Effect not found!");
@@ -365,6 +364,12 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("one_shot_sound"), "Sound doesn't exist!");
                         if (mun_seeker != null && (mun_seeker.ToLower() != "dumb" && mun_seeker.ToLower() != "lock"))
                             Logger.LogInvalidValue(file, section.GetSetting("seeker"), "Must be DUMB or LOCK!");
+                        // The damage modifiers of the [WeaponType] in WeaponModDB.ini
+                        if (mun_weaponType != null && !WeaponTypeExists(mun_weaponType))
+                            Logger.LogInvalidValue(file, section.GetSetting("weapon_type"), "Weapon type doesn't exist!");
+                        // The trail (e.g. a missile's exhaust) is attached to this hardpoint of the munition's model
+                        if (mun_trailParent != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(mun_trailParent))
+                            Logger.LogHardpoint(file, section.GetSetting("hp_trail_parent"));
                         break;
                     case "lod":
                         string obj = Util.TryGetStrSetting(section, "obj");
@@ -619,7 +624,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 FLDataFile ini = Checker.LoadIni(weaponModFile);
                 if (ini == null)
                     continue;
-                weaponTypes.AddRange(ini.GetSettings("WeaponType", "nickname").Select(s => s.Str(0)));
+                weaponTypes.AddRange(ini.GetSettings("WeaponType", "nickname").Select(s => s.Str(0).Trim().ToLower()));
             }
 
             AllEquipNicks = equipNicks.SelectMany(n => n.Value).ToArray();
