@@ -225,7 +225,7 @@ namespace FLScanIE
 
                         string shipclass_member = set.Str(1).ToLowerInvariant();
                         if (!ShipClassMemberExists(shipclass_member))
-                            Logger.LogInvalidValue(npcShipPath, set, "Invalid shipclass member!");
+                            Logger.LogInvalidValue(npcShipPath, set, "Invalid shipclass member!", shipclass_member);
 
                         o.shipclass_members.Add(shipclass_member);
                         o.desc = set.desc;
