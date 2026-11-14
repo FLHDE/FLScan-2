@@ -217,7 +217,7 @@ namespace FLScanIE
                                 break;
                             if (solarUTF.ContainsKey(retn.Nick))
                             {
-                                Logger.LogDublicateValue(solarFile, section.GetSetting("nickname"), "Duplicate solar nickname!");
+                                Logger.LogDublicateValue(solarFile, section.GetSetting("nickname"), "Duplicate solar nickname! The game redefines the first solar with this one, and reports an error for each [CollisionGroup] after it.");
                                 break;
                             }
                             solarNicknames.Add(retn.Nick);

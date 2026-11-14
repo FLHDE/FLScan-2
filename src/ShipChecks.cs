@@ -312,7 +312,7 @@ namespace FLScanIE
                                 break;
                             if (shipNicknames.Contains(retn.Nick, StringComparer.OrdinalIgnoreCase))
                             {
-                                Logger.LogDublicateValue(shipFile, section.GetSetting("nickname"), "Duplicate ship nickname!");
+                                Logger.LogDublicateValue(shipFile, section.GetSetting("nickname"), "Duplicate ship nickname! The game warns and uses the first definition.");
                                 break;
                             }
                             shipNicknames.Add(retn.Nick);

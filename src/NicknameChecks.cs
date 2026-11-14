@@ -159,29 +159,34 @@ namespace FLScanIE
             return Checker.flIni.GetSettings("Data", key).Where(s => s.NumValues() > 0).Select(s => s.Str(0)).ToArray();
         }
 
+        private const string UsesFirst = "The game uses the first definition, at {1}";
+
         private static void CheckDuplicates()
         {
-            CheckDuplicates("equipment", Load(DataFiles("equipment")), null, false, false);
-            CheckDuplicates("good", Load(DataFiles("goods")), new[] { "good" }, false, false);
-            CheckDuplicates("loadout", Load(DataFiles("loadouts")), new[] { "loadout" }, false, false);
-            CheckDuplicates("faction", Load(new[] { "initialworld.ini" }), new[] { "group" }, false, false);
+            // common.dll keeps the first equipment and good, and a later loadout replaces the items of the earlier one.
+            // The client redefines a sound with a later one (and warns).
+            CheckDuplicates("equipment", Load(DataFiles("equipment")), null, false, UsesFirst);
+            CheckDuplicates("good", Load(DataFiles("goods")), new[] { "good" }, false, UsesFirst);
+            CheckDuplicates("loadout", Load(DataFiles("loadouts")), new[] { "loadout" }, false, "The game replaces the loadout at {1} with this one");
+            CheckDuplicates("sound", Load(DataFiles("sounds")), new[] { "sound" }, false, "The game warns and redefines the sound at {1} with this one");
+            CheckDuplicates("faction", Load(new[] { "initialworld.ini" }), new[] { "group" }, false, null);
             // Each kind of pilot block has its own nicknames. The game keeps the first block or pilot with a
             // nickname (std::map::insert in content.dll), and population pilots are loaded before story pilots.
-            CheckDuplicates("pilot", Load(new[] { @"MISSIONS\pilots_population.ini", @"MISSIONS\pilots_story.ini" }), null, true, true);
+            CheckDuplicates("pilot", Load(new[] { @"MISSIONS\pilots_population.ini", @"MISSIONS\pilots_story.ini" }), null, true, UsesFirst);
 
             foreach (string universeFile in DataFiles("universe"))
             {
                 IniFile universe = Load(universeFile);
                 if (universe == null)
                     continue;
-                CheckDuplicates("system", new[] { universe }, new[] { "system" }, false, false);
+                CheckDuplicates("system", new[] { universe }, new[] { "system" }, false, null);
 
                 // Objects and zones of a system are referenced the same way, so they share their nicknames
                 foreach (var systemFile in universe.Ini.GetSettings("System", "file").Where(s => s.NumValues() > 0))
                 {
                     IniFile system = Load(Path.Combine("universe", systemFile.Str(0)));
                     if (system != null)
-                        CheckDuplicates("object or zone", new[] { system }, new[] { "object", "zone" }, false, false);
+                        CheckDuplicates("object or zone", new[] { system }, new[] { "object", "zone" }, false, null);
                 }
             }
 
@@ -191,17 +196,17 @@ namespace FLScanIE
                 if (Checker.FileExistsOnDisk(file))
                     // content.dll keeps the first [ObjList] (std::map::insert) and finds MsnShips and MsnFormations
                     // by searching its list of them from the start, so the first definition is used
-                    CheckDuplicates("mission", Load(new[] { file }), null, true, true);
+                    CheckDuplicates("mission", Load(new[] { file }), null, true, UsesFirst);
             }
         }
 
         /// <summary>
         /// Reports nicknames that are defined more than once in the sections (lowercase names, or all sections if
         /// null) of these files. If perSectionType is true, each kind of section has its own nicknames. A duplicate
-        /// that is an identical copy is a warning, otherwise it's an error: the game only uses one of them. If
-        /// firstIsUsed is true, it's known that the game uses the first definition, and the message says so.
+        /// that is an identical copy is a warning, otherwise it's an error: the game only uses one of them. usage says
+        /// what the game does with the duplicate ({1} is where the first one is), or is null if that isn't known.
         /// </summary>
-        private static void CheckDuplicates(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, bool firstIsUsed)
+        private static void CheckDuplicates(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, string usage)
         {
             var first = new Dictionary<string, KeyValuePair<IniFile, FLDataFile.Section>>();
             foreach (IniFile file in files)
@@ -227,8 +232,7 @@ namespace FLScanIE
                     if (!file.OnDisk)
                         continue; // Duplicates in vanilla files that aren't present can't be fixed by the mod
 
-                    string message = string.Format(firstIsUsed ? "Duplicate {0} nickname! The game uses the first definition, at {1}" :
-                        "Duplicate {0} nickname! Also defined at {1}", what, DescribeLocation(original.Key, Util.TryGetSetting(original.Value, "nickname")));
+                    string message = string.Format("Duplicate {0} nickname! " + (usage ?? "Also defined at {1}"), what, DescribeLocation(original.Key, Util.TryGetSetting(original.Value, "nickname")));
                     if (original.Key.OnDisk && SameSettings(original.Value, section))
                         Logger.LogDublicateValue(file.Path, nickSetting, message + " (an identical copy)", LogLevel.warning);
                     else
