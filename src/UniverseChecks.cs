@@ -176,7 +176,7 @@ namespace FLScanIE
                             Logger.LogInvalidValue(file, setting, "Asteroid not found!");
                         break;
 
-                    case "BGCS_base_run_by": // TODO
+                    case "bgcs_base_run_by": // TODO
                         break;
                 }
             }

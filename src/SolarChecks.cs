@@ -168,7 +168,8 @@ namespace FLScanIE
             Logger.ILog("Parsing Solar-Folder");
             SolarChecks.solarFiles = Checker.flIni.GetSettings("Data", "solar").Select(s => s.Str(0)).ToArray();
             List<string> solarNicknames = new List<string>();
-            solarUTF = new Dictionary<string, UtfFile>();
+            // Case-insensitive, because nicknames are referenced with any casing
+            solarUTF = new Dictionary<string, UtfFile>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var solarFile in SolarChecks.solarFiles)
             {
@@ -230,7 +231,8 @@ namespace FLScanIE
 
             SolarChecks.allArchetypes = SolarChecks.solarNicknames.Union(SolarChecks.starNicknames).Union(SolarChecks.asteroidNicknames).ToArray();
 
-            Logger.ILog(string.Format("Finished Solar-Folder, found {0} solars {1} asteroids and {2} stars", SolarChecks.solarNicknames.Length, asteroidNicknames.Length, SolarChecks.starNicknames.Length));
+            Logger.ILog(string.Format("Finished Solar-Folder, found {0} solars ({1} models loaded), {2} asteroids and {3} stars",
+                SolarChecks.solarNicknames.Length, solarUTF.Values.Count(u => u != null), asteroidNicknames.Length, SolarChecks.starNicknames.Length));
         }
 
         public static bool SolarExists(string nick)

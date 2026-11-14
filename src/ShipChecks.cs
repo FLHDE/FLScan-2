@@ -31,21 +31,25 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
-            var ships = ini.sections.Where(s => s.sectionName.ToLower() == "ship");
-            var collisionGroups = ini.sections.Where(s => s.sectionName.ToLower() == "CollisionGroup");
-            var simples = ini.sections.Where(s => s.sectionName.ToLower() == "simple");
+            // A [CollisionGroup] belongs to the [Ship] above it
+            string currentShip = null;
 
-            foreach (var ship in ships)
+            foreach (var section in ini.sections)
             {
-                CheckShip(file, ship);
-            }
-            foreach (var collGrp in collisionGroups)
-            {
-                CheckCollGroup(file, collGrp);
-            }
-            foreach (var simple in simples)
-            {
-                CheckSimpe(file, simple);
+                switch (section.sectionName.ToLower())
+                {
+                    case "ship":
+                        currentShip = Util.TryGetStrSetting(section, "nickname");
+                        CheckShip(file, section);
+                        break;
+                    case "collisiongroup":
+                        CheckCollGroup(file, section, currentShip);
+                        break;
+                    case "simple":
+                        currentShip = null;
+                        CheckSimpe(file, section);
+                        break;
+                }
             }
         }
 
@@ -62,10 +66,10 @@ namespace FLScanIE
                 Logger.LogInvalidValue(file, ship.GetSetting("type"), "Ship type doesn't exist!");
 
             Util.CheckIDName(ship, "ids_name", nick, file);
-            Util.CheckIDName(ship, "ids_info", nick, file);
+            Util.CheckIDInfo(ship, "ids_info", nick, file);
 
             for (int i = 1; i <= 3; i++)
-                Util.CheckIDName(ship, "ids_info" + i, nick, file);
+                Util.CheckIDInfo(ship, "ids_info" + i, nick, file);
 
             var fuses = ship.GetSettings("fuse");
             foreach (var fuse in fuses)
@@ -182,63 +186,62 @@ namespace FLScanIE
             //    Logger.LogSettingNotFound(file, nick, "Ship", "pilot_mesh");
         }
 
-        private static void CheckCollGroup(string file, FLDataFile.Section collGrp)
+        /// <param name="ship">Nickname of the [Ship] the collision group belongs to, or null if there's none.</param>
+        private static void CheckCollGroup(string file, FLDataFile.Section collGrp, string ship)
         {
-            string firstLine = Util.GetSectionIdentifier(collGrp);
+            if (ship == null)
+                Logger.ELog(file + ":" + Util.GetSectionIdentifier(collGrp) + ": [CollisionGroup] doesn't belong to a [Ship]!");
 
-            if (collGrp.SettingExists("explosion_arch"))
-            {
-                if (!FXChecks.ExplosionExists(collGrp.GetSetting("explosion_arch").Str(0)))
-                    Logger.LogInvalidValue(file, collGrp.GetSetting("explosion_arch"), "Explosion doesn't exist!");
-            }
-            else
-                Logger.LogSettingNotFound(file, firstLine, "CollisionGroup", "explosion_arch");
+            // explosion_arch, type and the dmg_* settings are all optional
+            var explosionArch = Util.TryGetSetting(collGrp, "explosion_arch");
+            if (explosionArch != null && !FXChecks.ExplosionExists(explosionArch.Str(0)))
+                Logger.LogInvalidValue(file, explosionArch, "Explosion doesn't exist!");
 
-            var fuses = collGrp.GetSettings("fuse");
-            foreach (var fuse in fuses)
+            var separationExplosion = Util.TryGetSetting(collGrp, "separation_explosion");
+            if (separationExplosion != null && !FXChecks.ExplosionExists(separationExplosion.Str(0)))
+                Logger.LogInvalidValue(file, separationExplosion, "Explosion doesn't exist!");
+
+            foreach (var fuse in collGrp.GetSettings("fuse"))
             {
                 Util.CheckNumberOfArgs(fuse, file, 3);
                 if (!FXChecks.FuseExists(fuse.Str(0)))
                     Logger.LogInvalidValue(file, fuse, "Fuse doesn't exist!");
             }
 
-            if (collGrp.SettingExists("type"))
-            {
-                if (!collisionGroupTypes.Contains(collGrp.GetSetting("type").Str(0).ToLower()))
-                    Logger.LogInvalidValue(file, collGrp.GetSetting("type"), "Invalid type!");
-            }
-            else
-                Logger.LogSettingNotFound(file, firstLine, "CollisionGroup", "type");
+            var type = Util.TryGetSetting(collGrp, "type");
+            if (type != null && !collisionGroupTypes.Contains(type.Str(0).ToLower()))
+                Logger.LogInvalidValue(file, type, "Invalid type!");
 
-            if (collGrp.SettingExists("debris_type"))
-            {
-                if (!collisionGroupTypes.Contains(collGrp.GetSetting("debris_type").Str(0).ToLower()))
-                    Logger.LogInvalidValue(file, collGrp.GetSetting("debris_type"), "Debris type doesn't exist!");
-            }
-            else
-                Logger.LogSettingNotFound(file, firstLine, "CollisionGroup", "debris_type");
+            var debrisType = Util.TryGetSetting(collGrp, "debris_type");
+            if (debrisType != null && !FXChecks.DebrisExists(debrisType.Str(0)))
+                Logger.LogInvalidValue(file, debrisType, "Debris type doesn't exist!");
 
-            if (collGrp.SettingExists("dmg_obj"))
-            {
-                string dmgObj = collGrp.GetSetting("dmg_obj").Str(0);
-                string dmgHp = Util.TryGetStrSetting(collGrp, "dmg_hp");
+            CheckDamageObject(file, collGrp, ship, "dmg_obj", "dmg_hp");
+            CheckDamageObject(file, collGrp, ship, "group_dmg_obj", "group_dmg_hp");
+        }
 
-                if (!simpleNicknames.Contains(dmgObj.ToLower()))
-                    Logger.LogInvalidValue(file, collGrp.GetSetting("dmg_obj"), "Simple doesn't exist!");
+        /// <summary>
+        /// Checks a damage object (a [Simple]) and the hardpoint on the ship it gets attached to.
+        /// </summary>
+        private static void CheckDamageObject(string file, FLDataFile.Section collGrp, string ship, string objName, string hpName)
+        {
+            var dmgObj = Util.TryGetSetting(collGrp, objName);
+            var dmgHp = Util.TryGetSetting(collGrp, hpName);
 
-                UtfFile dmgUtf;
-                if (dmgHp != null && !Checker.DisableUTF && simpleUTF.TryGetValue(dmgObj, out dmgUtf))
-                {
-                    if (!dmgUtf.HardpointExists(dmgHp))
-                        Logger.LogHardpoint(file, collGrp.GetSetting("dmg_hp"));
-                }
-            }
-            else
+            if (dmgObj == null)
             {
-                Logger.LogSettingNotFound(file, firstLine, "CollisionGroup", "dmg_obj");
-                if (collGrp.SettingExists("dmg_hp"))
-                    Logger.LogInvalidValue(file, collGrp.GetSetting("dmg_hp"), "dmg_hp exists but dmg_obj doesn't", "");
+                if (dmgHp != null)
+                    Logger.LogInvalidValue(file, dmgHp, hpName + " exists but " + objName + " doesn't!", "");
+                return;
             }
+
+            if (!simpleNicknames.Contains(dmgObj.Str(0).ToLower()))
+                Logger.LogInvalidValue(file, dmgObj, "Simple doesn't exist!");
+
+            if (dmgHp == null)
+                Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(collGrp), "CollisionGroup", hpName);
+            else if (ship != null && shipUTF.ContainsKey(ship) && !HardpointExists(ship, dmgHp.Str(0)))
+                Logger.LogHardpoint(file, dmgHp);
         }
 
         private static void CheckSimpe(string file, FLDataFile.Section simple)
@@ -284,10 +287,11 @@ namespace FLScanIE
             ShipChecks.shipFiles = Checker.flIni.GetSettings("Data", "ships").Select(s => s.Str(0)).ToArray();
 
             List<string> shipNicknames = new List<string>();
-            shipUTF = new Dictionary<string, UtfFile>();
+            // Case-insensitive, because nicknames are referenced with any casing
+            shipUTF = new Dictionary<string, UtfFile>(StringComparer.OrdinalIgnoreCase);
 
             List<string> simpleNicknames = new List<string>();
-            simpleUTF = new Dictionary<string, UtfFile>();
+            simpleUTF = new Dictionary<string, UtfFile>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var shipFile in ShipChecks.shipFiles)
             {
@@ -333,7 +337,8 @@ namespace FLScanIE
             ShipChecks.shipNicknames = shipNicknames.Select(n => n.ToLower()).ToArray();
             ShipChecks.simpleNicknames = simpleNicknames.Select(n => n.ToLower()).ToArray();
 
-            Logger.ILog(string.Format("Finished Ship-Folder, found {0} ships and {1} simples", ShipChecks.shipNicknames.Length, ShipChecks.simpleNicknames.Length));
+            Logger.ILog(string.Format("Finished Ship-Folder, found {0} ships ({1} models loaded) and {2} simples ({3} models loaded)",
+                ShipChecks.shipNicknames.Length, shipUTF.Values.Count(u => u != null), ShipChecks.simpleNicknames.Length, simpleUTF.Count));
         }
 
         public static bool ShipExists(string nickname)

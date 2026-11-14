@@ -23,61 +23,49 @@ namespace FLScanIE
         private static void CheckLoadoutFile(string file)
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
-            var loadouts = ini.GetSettings("Loadout");
-            string currentArchetype = null;
 
-            foreach (var loadout in loadouts)
+            foreach (var loadout in ini.sections.Where(s => s.sectionName.ToLower() == "loadout"))
             {
-                string item;
-                switch (loadout.settingName)
+                // The model of the archetype, used to check hardpoints. Null if unknown (no archetype, the model
+                // couldn't be loaded, it's a vanilla model that isn't present, or UTF checks are disabled).
+                UtfFile model = null;
+
+                var archetype = Util.TryGetSetting(loadout, "archetype");
+                if (archetype != null && archetype.NumValues() > 0)
                 {
-                    case "nickname":
-                        currentArchetype = null;
-                        break;
-                    case "archetype":
-                        if(!ShipChecks.ShipExists(loadout.Str(0)) && !SolarChecks.SolarExists(loadout.Str(0)))
-                            Logger.LogInvalidValue(file, loadout, "Archetype not found!");
-                        currentArchetype = loadout.Str(0);
-                        break;
-                    case "equip": // TODO: check if there are more weapons than hardpoints
-                        item = loadout.Str(0);
-                        if(!EquipmentChecks.EquipExists(item))
-                            Logger.LogInvalidValue(file, loadout, "Equip doesn't exist!");
+                    string arch = archetype.Str(0);
+                    if (ShipChecks.ShipExists(arch))
+                        ShipChecks.shipUTF.TryGetValue(arch, out model);
+                    else if (SolarChecks.SolarExists(arch))
+                        SolarChecks.solarUTF.TryGetValue(arch, out model);
+                    else
+                        Logger.LogInvalidValue(file, archetype, "Archetype not found!");
+                }
 
-                        if (loadout.NumValues() == 2 && currentArchetype != null)
-                        {
-                            string hardpoint = loadout.Str(1);
-                            string category = EquipmentChecks.GetCategory(item);
-                            if (!new [] { "CargoPod", "Light", "AttachedFX", "ShieldGenerator", "Shield", "Scanner", "Tractor", "CounterMeasureDropper", "Engine", "Thruster", "CloakingDevice", "Motor", "Gun", "MineDropper" }.Contains(category))
-                                break;
+                foreach (var setting in loadout.settings)
+                {
+                    if (setting.NumValues() == 0)
+                        continue;
 
-                            if (Checker.DisableUTF)
-                                break;
-                            
-                            Dictionary<string, UtfFile> utfList;
-                            if (ShipChecks.ShipExists(currentArchetype))
-                            {
-                                utfList = ShipChecks.shipUTF;
-                            }
-                            else if (SolarChecks.SolarExists(currentArchetype))
-                            {
-                                utfList = SolarChecks.solarUTF;
-                            }
-                            else
-                            {
-                                Logger.LogInvalidValue(file, loadout, "Archetype not found!");
-                                break;
-                            }
+                    switch (setting.settingName.ToLower())
+                    {
+                        case "equip": // TODO: check if there are more weapons than hardpoints
+                            if (!EquipmentChecks.EquipExists(setting.Str(0)))
+                                Logger.LogInvalidValue(file, setting, "Equip doesn't exist!");
 
-                            if (!utfList[currentArchetype].HardpointExists(hardpoint))
-                                Logger.LogInvalidValue(file, loadout, "Hardpoint not found!", hardpoint);
-                        }
-                        break;
-                    case "cargo":
-                        item = loadout.Str(0);
-                        if(!EquipmentChecks.EquipExists(item))
-                            Logger.LogInvalidValue(file, loadout, "Item doesn't exist!");
-                        break;
+                            // equip = item[, hardpoint[, ...]]; an empty hardpoint means it's mounted internally
+                            if (setting.NumValues() >= 2 && model != null && !Checker.DisableUTF)
+                            {
+                                string hardpoint = setting.Str(1).Trim();
+                                if (hardpoint.Length != 0 && !model.HardpointExists(hardpoint))
+                                    Logger.LogHardpoint(file, setting, hardpoint);
+                            }
+                            break;
+                        case "cargo":
+                            if (!EquipmentChecks.EquipExists(setting.Str(0)))
+                                Logger.LogInvalidValue(file, setting, "Item doesn't exist!");
+                            break;
+                    }
                 }
             }
         }

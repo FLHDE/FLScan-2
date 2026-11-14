@@ -68,7 +68,8 @@ namespace FLScanIE.Util_Functions
         {
             if (setting.NumValues() == 1 && !File.Exists(Path.Combine(prefix, setting.Str(0))))
             {
-                if (Checker.HasVanillaFile(file))
+                // Check whether the referenced file (not the ini referencing it) is a vanilla file
+                if (Checker.HasVanillaFile(Path.Combine(prefix, setting.Str(0))))
                     return true;
 
                 Logger.LogFileNotFound(file, setting);
@@ -123,9 +124,11 @@ namespace FLScanIE.Util_Functions
                     Logger.LogInvalidValue(file, setting, "Has to be a number!");
                     return false;
                 }
-                else
+                else if (ids != 0) // 0 means "no name/infocard"
                 {
-                    if (!Infocards.IsInfocard(ids) && (infocard && !Infocards.IsName(ids)))
+                    // Names have to be strings. Infocards are usually XML infocards, but some refer to strings.
+                    bool found = infocard ? Infocards.IsInfocard(ids) || Infocards.IsName(ids) : Infocards.IsName(ids);
+                    if (!found)
                     {
                         Logger.LogIDError(file, setting);
                         return false;
@@ -153,7 +156,7 @@ namespace FLScanIE.Util_Functions
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, bool errorUtf)
         {
-            return ParseNickUTF(flDataPath, file, section, "nickname", "DA_archetype", true);
+            return ParseNickUTF(flDataPath, file, section, "nickname", "DA_archetype", errorUtf);
         }
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, string nick, string utf)
