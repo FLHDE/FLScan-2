@@ -186,6 +186,9 @@ namespace FLScanIE
                 }
             }
 
+            // The block keys each pilot ends up with, including the inherited ones (Content.dll copies every block
+            // the parent has when it reads inherit, so they replace the ones set before it)
+            var pilotBlockKeys = new Dictionary<string, HashSet<string>>();
             position = 0;
             foreach (string file in pilotFiles)
             {
@@ -201,7 +204,32 @@ namespace FLScanIE
                     if (nick == null)
                         continue;
                     int current = position++;
-                    if (!present || section.sectionName.ToLower() != "pilot")
+                    if (section.sectionName.ToLower() != "pilot")
+                        continue;
+                    var blockKeys = new HashSet<string>();
+                    if (!pilotBlockKeys.ContainsKey(nick.ToLower()))
+                        pilotBlockKeys[nick.ToLower()] = blockKeys;
+
+                    foreach (var setting in section.settings)
+                    {
+                        if (setting.NumValues() > 0)
+                        {
+                            string key = setting.settingName.ToLower();
+                            HashSet<string> parentKeys;
+                            if (key == "inherit" && pilotBlockKeys.TryGetValue(setting.Str(0).ToLower(), out parentKeys) && parentKeys != blockKeys)
+                            {
+                                foreach (string overwritten in blockKeys.Intersect(parentKeys).ToArray())
+                                {
+                                    if (present)
+                                        Logger.LogInvalidValue(file, setting, "Replaces the " + overwritten + " set before it with the one of the inherited pilot! Put inherit first.", LogLevel.warning);
+                                }
+                                blockKeys.UnionWith(parentKeys);
+                            }
+                            else if (pilotBlockSettings.ContainsKey(key))
+                                blockKeys.Add(key);
+                        }
+                    }
+                    if (!present)
                         continue;
 
                     foreach (var setting in section.settings)
