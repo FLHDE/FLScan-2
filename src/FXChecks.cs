@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -22,6 +22,8 @@ namespace FLScanIE
 
         private static string[] effectTypes;
         private static string[] debrisNicknames;
+        // The [IGraph] nicknames of the igraph files (lowercase), or null if none of them could be read
+        private static HashSet<string> graphNicks;
 
         public static void CheckFX()
         {
@@ -121,7 +123,7 @@ namespace FLScanIE
                         if (!DebrisExists(effect.Str(0)))
                             Logger.LogInvalidValue(file, effect, "Debris doesn't exist!");
                         break;
-                    case "progress":
+                    case "process":
                         string str = effect.Str(0).ToLower();
                         if (str != "shatter" && str != "disappear" && str != "none")
                             Logger.LogInvalidValue(file, effect, "Has to be shatter, disappear or none.");
@@ -177,12 +179,34 @@ namespace FLScanIE
             FXChecks.fuseFiles = fuses[0];
             FXChecks.fuseNicks = fuses[1].Select(n => n.ToLower()).ToArray();
 
+            // The graphs (e.g. of light curves). Missing files are reported by Checker.Parse.
+            graphNicks = null;
+            foreach (var igraphFile in Checker.flIni.GetSettings("Data", "igraph").Where(s => s.NumValues() > 0))
+            {
+                FLDataFile ini = Checker.LoadIni(igraphFile.Str(0));
+                if (ini == null)
+                    continue;
+                if (graphNicks == null)
+                    graphNicks = new HashSet<string>();
+                foreach (var nick in ini.GetSettings("IGraph", "nickname").Where(s => s.NumValues() > 0))
+                    graphNicks.Add(nick.Str(0).Trim().ToLower());
+            }
+
             Logger.ILog(string.Format("Finished FX-Folder, found {0} effects, {1} explosions and {2} fuses", effectNicks.Length, explosionNicks.Length, fuseNicks.Length));
         }
 
         public static void AddExplosions(IEnumerable<string> explosions)
         {
             FXChecks.explosionNicks = FXChecks.explosionNicks.Union(explosions).ToArray();
+        }
+
+        /// <summary>
+        /// True if an [IGraph] of the igraph files has this nickname (the game ignores the case), or if they
+        /// couldn't be read.
+        /// </summary>
+        public static bool GraphExists(string nick)
+        {
+            return graphNicks == null || graphNicks.Contains(nick.Trim().ToLower());
         }
 
         public static bool EffectExists(string nick)

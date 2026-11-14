@@ -199,7 +199,6 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string sh_collapse_snd = Util.TryGetStrSetting(section, "shield_collapse_sound");
                         string sh_rebuilt_snd = Util.TryGetStrSetting(section, "shield_rebuilt_sound");
                         string sh_collapse_eff = Util.TryGetStrSetting(section, "shield_collapse_particle");
-                        string sh_hit_eff = Util.TryGetStrSetting(section, "shield_hit_eff");
 
                         if (sh_collapse_snd != null && !AudioChecks.SoundExists(sh_collapse_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("shield_collapse_sound"), "Sound doesn't exist!");
@@ -207,8 +206,15 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("shield_rebuilt_sound"), "Sound doesn't exist!");
                         if (sh_collapse_eff != null && !FXChecks.EffectExists(sh_collapse_eff))
                             Logger.LogInvalidValue(file, section.GetSetting("shield_collapse_particle"), "Effect doesn't exist!");
-                        if (sh_hit_eff != null && !FXChecks.EffectExists(sh_hit_eff))
-                            Logger.LogInvalidValue(file, section.GetSetting("shield_hit_eff"), "Effect doesn't exist!");
+                        // shield_hit_effects = threshold, effect, ... (repeatable)
+                        foreach (var hitEffects in section.GetSettings("shield_hit_effects"))
+                        {
+                            for (int i = 1; i < hitEffects.NumValues(); i++)
+                            {
+                                if (hitEffects.Str(i) != "" && !FXChecks.EffectExists(hitEffects.Str(i)))
+                                    Logger.LogInvalidValue(file, hitEffects, "Effect doesn't exist!", hitEffects.Str(i));
+                            }
+                        }
                         break;
                     case "tradelane":
                         foreach (var setting in section.settings)
@@ -426,7 +432,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         Util.CheckIDName(section, "ids_name", nick, file);
                         Util.CheckIDInfo(section, "ids_info", nick, file);
 
-                        if (category != null && !GoodCategories.Contains(category))
+                        if (category != null && !GoodCategories.Contains(category.ToLower()))
                             Logger.LogInvalidValue(file, section.GetSetting("category"), "Not a valid category!");
 
                         if (equipment != null && !EquipExists(equipment))
@@ -467,7 +473,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                 {
                                     string hp, equip;
 
-                                    if (addons[i].Length == 3)
+                                    // addon = equipment, hardpoint or internal[, count[, mid or high]] (common.dll)
+                                    if (addons[i].Length >= 2 && addons[i].Length <= 4)
                                     {
                                         equip = addons[i][0];
                                         hp = addons[i][1];
@@ -476,7 +483,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                             Logger.LogInvalidValue(file, addonSettings[i], "Equip doesn't exist!", equip);
                                         if (Checker.DisableUTF)
                                             break;
-                                        if (hp != "internal")
+                                        if (hp.ToLower() != "internal")
                                         {
                                             if (shipUtf != null && !shipUtf.HardpointExists(hp)
                                                 || shipUtf == null && !Checker.AssumeVanillaFilesExist)
@@ -485,7 +492,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                             
                                     }
                                     else
-                                        Logger.LogArgCount(file, addonSettings[i], 3);
+                                        Logger.LogArgCount(file, addonSettings[i], 2, 3, 4);
                                 }
                                 break;
                             case "equipment":
@@ -539,41 +546,38 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         var MarketGoods = section.GetSettings("MarketGood").ToArray();
                         foreach (var marketGood in MarketGoods)
                         {
-                            if (marketGood.NumValues() < 7)
+                            if (marketGood.NumValues() == 0)
                             {
-                                Logger.LogArgCount(file, marketGood, 7);
+                                Logger.LogArgCount(file, marketGood, 1);
                                 continue;
                             }
 
+                            // MarketGood = good, level, rep, min, max, transaction type, price multiplier.
+                            // Everything after the good is optional; an empty value keeps its default (common.dll).
                             string[] args = marketGood.values.Select(s => s.ToString().Trim()).ToArray();
-
                             string equipNick = args[0];
-                            int rank;
-                            float rep;
-                            int min, max, _noSell;
-                            bool noSell;
-                            float multip;
+                            Func<int, string> arg = i => i < args.Length && args[i] != "" ? args[i] : null;
+                            float level, rep, multip;
+                            int min, max, transactionType;
 
-                            if (!int.TryParse(args[1], out rank))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rank! Has to be a number!", args[1]);
-                            if (!float.TryParse(args[2].Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out rep))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be a number!", args[2]);
-                            else if(rep < -1 || rep > 1)
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be between -1 and 1!", args[2]);
-                            if (!int.TryParse(args[3], out min))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid min! Has to be a number!", args[3]);
-                            if (!int.TryParse(args[4], out max))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid max! Has to be a number!", args[4]);
-                            if (!int.TryParse(args[5], out _noSell))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid noSell! Has to be 1 or 0!", args[5]);
-                            else
+                            if (arg(1) != null && !float.TryParse(arg(1), NumberStyles.Float, CultureInfo.InvariantCulture, out level))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid level! Has to be a number!", arg(1));
+                            if (arg(2) != null)
                             {
-                                if (_noSell == 0) noSell = false;
-                                else if (_noSell == 1) noSell = true;
-                                else Logger.LogInvalidValue(file, marketGood, "Invalid noSell! Has to be 1 or 0!", args[5]);
+                                if (!float.TryParse(arg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out rep))
+                                    Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be a number!", arg(2));
+                                else if (rep < -1 || rep > 1)
+                                    Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be between -1 and 1!", arg(2));
                             }
-                            if (!float.TryParse(args[6], out multip))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid multiplier! Has to be a number!", args[6]);
+                            if (arg(3) != null && !int.TryParse(arg(3), out min))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid min! Has to be a number!", arg(3));
+                            if (arg(4) != null && !int.TryParse(arg(4), out max))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid max! Has to be a number!", arg(4));
+                            // 0: the base buys and sells it, 1: the base only buys it, 2: the base only sells it
+                            if (arg(5) != null && (!int.TryParse(arg(5), out transactionType) || transactionType < 0 || transactionType > 2))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid transaction type! Has to be 0, 1 or 2!", arg(5));
+                            if (arg(6) != null && !float.TryParse(arg(6), NumberStyles.Float, CultureInfo.InvariantCulture, out multip))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid multiplier! Has to be a number!", arg(6));
 
                             if (!GoodExists(equipNick))
                                 Logger.LogInvalidValue(file, marketGood, "Equipment doesn't exist!", equipNick);

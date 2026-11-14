@@ -53,7 +53,8 @@ namespace FLScanIE
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
             var rooms = ini.sections.Where(s => s.sectionName.ToLower() == "room").ToArray();
-            FLDataFile.Section baseInfo = ini.sections.FirstOrDefault(s => s.sectionName.ToLower() == "baseinfo");
+            // The game reads [Base] and [BaseInfo] the same way (common.dll)
+            FLDataFile.Section baseInfo = ini.sections.FirstOrDefault(s => s.sectionName.ToLower() == "baseinfo" || s.sectionName.ToLower() == "base");
 
             var roomNicks = new List<string>();
             foreach (var room in rooms)
@@ -101,20 +102,27 @@ namespace FLScanIE
             [CharacterPlacement] name  TODO: thn
             */
 
-            foreach (var script in ini.GetSettings("Room_Info", "set_script").Union(ini.GetSettings("CharacterPlacement", "start_script")))
+            // The game reads [Room] and [Room_Info] the same way (common.dll)
+            var roomInfoSettings = ini.GetSettings("Room_Info").Concat(ini.GetSettings("Room")).ToArray();
+            foreach (var script in roomInfoSettings.Where(s => s.settingName.ToLower() == "set_script").Union(ini.GetSettings("CharacterPlacement", "start_script")))
             {
                 if (script.NumValues() > 0 && !Checker.FileExists(script.Str(0)))
                     Logger.LogFileNotFound(file, script);
             }
 
-            // scene = [all,] ambient, <script>[, TRAFFIC_PRIORITY]
-            foreach (var scene in ini.GetSettings("Room_Info", "scene"))
+            // scene = [all,] ambient|traffic|once, script[, priority]. Like the game, the values end at the first
+            // empty one, and a scene with any other number of values is ignored.
+            foreach (var scene in roomInfoSettings.Where(s => s.settingName.ToLower() == "scene"))
             {
-                string script = scene.values.Select(v => v.ToString().Trim()).FirstOrDefault(v => v.ToLower().EndsWith(".thn"));
-                if (script == null)
-                    Logger.LogInvalidValue(file, scene, "No script found!");
-                else if (!Checker.FileExists(script))
-                    Logger.LogFileNotFound(file, scene, script);
+                string[] values = scene.values.Select(v => v.ToString().Trim()).TakeWhile(v => v != "").ToArray();
+                if (values.Length > 0 && values[0].ToLower() == "all")
+                    values = values.Skip(1).ToArray();
+                if (values.Length != 2 && values.Length != 3)
+                    Logger.LogInvalidValue(file, scene, "Has to be [all,] ambient|traffic|once, script[, priority]!");
+                else if (values[0].ToLower() != "ambient" && values[0].ToLower() != "traffic" && values[0].ToLower() != "once")
+                    Logger.LogInvalidValue(file, scene, "Has to be ambient, traffic or once!", values[0]);
+                else if (!Checker.FileExists(values[1]))
+                    Logger.LogFileNotFound(file, scene, values[1]);
             }
 
             foreach (var hotspot in ini.GetSettings("Hotspot"))
@@ -133,6 +141,8 @@ namespace FLScanIE
                        //     Logger.LogInvalidValue(file, hotspot, "Room doesn't exist!");
                         break;
                     case "behavior":
+                        // The game only compares the first word
+                        val = val.Split(',', ';', '/', ' ')[0];
                         if (!hotspotBehaviors.Contains(val))
                             Logger.LogInvalidValue(file, hotspot, "Invalid behavior!");
                         break;
@@ -268,8 +278,8 @@ namespace FLScanIE
                         else if (!Checker.FileExists(relSystemFile)) // Vanilla files that aren't present can't be checked
                             Logger.LogFileNotFound(file, setting);
                         break;
-                    case "pos":
-                        if (!Util.CheckNumberOfArgs(setting, file, 2))
+                    case "pos": // x, y[, z]
+                        if (!Util.CheckNumberOfArgs(setting, file, 2, 3))
                             break;
                         float x, y;
                         if (!float.TryParse(setting.Str(0), NumberStyles.Float, CultureInfo.InvariantCulture, out x)
@@ -343,10 +353,12 @@ namespace FLScanIE
                                     if (val != "exclusion" && val != "field" && val != "open")
                                         Logger.LogInvalidValue(file, setting, "Invalid type!");
                                     break;
-                                case "usage":
-                                    val = val.ToLower();
-                                    if (val != "patrol" && val != "trade")
-                                        Logger.LogInvalidValue(file, setting, "Invalid usage!");
+                                case "usage": // Any number of words
+                                    foreach (string usage in setting.values.Select(v => v.ToString().Trim().ToLower()).TakeWhile(v => v != ""))
+                                    {
+                                        if (usage != "patrol" && usage != "trade")
+                                            Logger.LogInvalidValue(file, setting, "Invalid usage!", usage);
+                                    }
                                     break;
                                 case "spacedust":
                                     if (!FXChecks.EffectExists(val))
@@ -354,7 +366,7 @@ namespace FLScanIE
                                     break;
                                 case "shape":
                                     val = val.ToLower();
-                                    if (val != "box" && val != "cylinder" && val != "ellipsoid" && val != "sphere" && val != "ring")
+                                    if (val != "box" && val != "cylinder" && val != "ellipsoid" && val != "sphere" && val != "ring" && val != "mesh")
                                         Logger.LogInvalidValue(file, setting, "Invalid shape!");
                                     break;
                                 case "pos":
@@ -382,9 +394,12 @@ namespace FLScanIE
                                     if (!FactionExists(val))
                                         Logger.LogInvalidValue(file, setting, "Faction doesn't exist!", val);
                                     break;
-                                case "mission_type":
-                                    if (val != "lawful" && val != "unlawful")
-                                        Logger.LogInvalidValue(file, setting, "Invalid mission_type!");
+                                case "mission_type": // Any number of words
+                                    foreach (string missionType in setting.values.Select(v => v.ToString().Trim().ToLower()).TakeWhile(v => v != ""))
+                                    {
+                                        if (missionType != "lawful" && missionType != "unlawful")
+                                            Logger.LogInvalidValue(file, setting, "Invalid mission_type!", missionType);
+                                    }
                                     break;
                                 case "encounter":
                                     if (!ThingExistsInSystem(sysnick, val, "encounterparameters"))
@@ -406,7 +421,7 @@ namespace FLScanIE
                         if (local_fact != null && !FactionExists(local_fact))
                             Logger.LogInvalidValue(file, section.GetSetting("local_faction"), "Faction doesn't exist!");
                         if (rpopd != null)
-                            if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true")
+                            if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true" && rpopd != "0" && rpopd != "1")
                                 Logger.LogInvalidValue(file, section.GetSetting("rpop_solar_detection"), "Must be true or false.");
                         if (farclip != null)
                         {
@@ -414,7 +429,7 @@ namespace FLScanIE
                             if (!float.TryParse(farclip, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out farclip_float))
                                 Logger.LogInvalidValue(file, section.GetSetting("space_farclip"), "Invalid data type, expected numeric value.");
                             else if (farclip_float < 1000)
-                                Logger.LogInvalidValue(file, section.GetSetting("space_farclip"), "Must be at least 1000.");
+                                Logger.LogInvalidValue(file, section.GetSetting("space_farclip"), "The game raises values below 1000 to 1000.", LogLevel.warning);
                         }
                         break;
                     case "texturepanels":
@@ -464,34 +479,19 @@ namespace FLScanIE
                         string music_danger = Util.TryGetStrSetting(section, "danger");
                         string music_space = Util.TryGetStrSetting(section, "space");
 
-                        if (music_battle != null)
-                        {
-                            if (!AudioChecks.SoundExists(music_battle))
-                                Logger.LogInvalidValue(file, section.GetSetting("battle"), "Sound doesn't exist!");
-                        }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Music", "music_battle");
-
-                        if (music_danger != null)
-                        {
-                            if (!AudioChecks.SoundExists(music_danger))
-                                Logger.LogInvalidValue(file, section.GetSetting("danger"), "Sound doesn't exist!");
-                        }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Music", "music_danger");
-
-                        if (music_space != null)
-                        {
-                            if (!AudioChecks.SoundExists(music_space))
-                                Logger.LogInvalidValue(file, section.GetSetting("space"), "Sound doesn't exist!");
-                        }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Music", "music_space");
+                        // Each track is optional: without one, the game plays no music in that situation
+                        if (music_battle != null && !AudioChecks.SoundExists(music_battle))
+                            Logger.LogInvalidValue(file, section.GetSetting("battle"), "Sound doesn't exist!");
+                        if (music_danger != null && !AudioChecks.SoundExists(music_danger))
+                            Logger.LogInvalidValue(file, section.GetSetting("danger"), "Sound doesn't exist!");
+                        if (music_space != null && !AudioChecks.SoundExists(music_space))
+                            Logger.LogInvalidValue(file, section.GetSetting("space"), "Sound doesn't exist!");
 
                         break;
                     case "background":
                         string basic_stars = Util.TryGetStrSetting(section, "basic_stars");
                         string complex_stars = Util.TryGetStrSetting(section, "complex_stars");
+                        string bg_file = Util.TryGetStrSetting(section, "file"); // The same as complex_stars
                         string nebulae = Util.TryGetStrSetting(section, "nebulae");
 
                         if (basic_stars != null)
@@ -510,13 +510,10 @@ namespace FLScanIE
                         //else
                         //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "complex_stars");
 
-                        if (nebulae != null)
-                        {
-                            if (!Checker.FileExists(nebulae))
-                                Logger.LogFileNotFound(file, section.GetSetting("nebulae"));
-                        }
-                        else
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Background", "nebulae");
+                        if (bg_file != null && !Checker.FileExists(bg_file))
+                            Logger.LogFileNotFound(file, section.GetSetting("file"));
+                        if (nebulae != null && !Checker.FileExists(nebulae))
+                            Logger.LogFileNotFound(file, section.GetSetting("nebulae"));
 
                         break;
                     case "dust":
@@ -530,9 +527,7 @@ namespace FLScanIE
                         string ls_color = Util.TryGetStrSetting(section, "color");
                         string ls_range = Util.TryGetStrSetting(section, "range");
                         string ls_atten = Util.TryGetStrSetting(section, "attenuation");*/
-                        string ls_attenCurve = Util.TryGetStrSetting(section, "atten_curve");
                         string ls_behavior = Util.TryGetStrSetting(section, "behavior");
-                        //string ls_colcurve = Util.TryGetStrSetting(section, "color_curve");
                         string ls_type = Util.TryGetStrSetting(section, "type");
 
                        /* if (ls_pos != null)
@@ -545,16 +540,16 @@ namespace FLScanIE
                             if (!Util.CheckNumberOfArgs(ls_pos, file, 3) && float.TryParse(posx, out pos_x))
                                 Logger.LogInvalidValue(file, section.GetSetting("pos"), "Position must have three number values: 0, 0, 0");
                        */
-                        if (ls_attenCurve != null)
+                        // The curves are [IGraph]s from igraph.ini. The game shows a message box for an unknown one.
+                        foreach (var curve in section.settings.Where(s => s.NumValues() > 0))
                         {
-                            if (ls_attenCurve.ToLower() != "dynamic_direction")
-                                Logger.LogInvalidValue(file, section.GetSetting("atten_curve"), "Has to be DYNAMIC_DIRECTION.");
+                            string curveKey = curve.settingName.ToLower();
+                            if ((curveKey == "atten_curve" || curveKey == "ambient_curve" || curveKey == "color_curve") && !FXChecks.GraphExists(curve.Str(0)))
+                                Logger.LogInvalidValue(file, curve, "Graph doesn't exist in igraph.ini!", curve.Str(0));
                         }
-                        //else
-                        //    Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "atten_curve");
 
-                        if (ls_behavior != null)
-                            Logger.LogInvalidValue(file, section.GetSetting("behavior"), "Invalid line in file.");
+                        if (ls_behavior != null) // The game ignores keys it doesn't know
+                            Logger.LogInvalidValue(file, section.GetSetting("behavior"), "Not read by the game.", LogLevel.warning);
                         /*{
                             if (ls_behavior.ToLower() != "nothing")
                                 Logger.LogInvalidValue(file, section.GetSetting("behavior"), "Has to be NOTHING.");
@@ -564,8 +559,9 @@ namespace FLScanIE
                         */
                         if (ls_type != null)
                         {
-                            if (ls_type.ToLower() != "point" && ls_type.ToLower() != "directional")
-                                Logger.LogInvalidValue(file, section.GetSetting("type"), "Has to be DIRECTIONAL or POINT.");
+                            string lightType = ls_type.ToLower();
+                            if (lightType != "ambient" && lightType != "point" && lightType != "cone" && lightType != "directional")
+                                Logger.LogInvalidValue(file, section.GetSetting("type"), "Has to be AMBIENT, POINT, CONE or DIRECTIONAL.");
                         }
                         else
                             Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "LightSource", "type");
@@ -693,8 +689,8 @@ namespace FLScanIE
                                         Logger.LogInvalidValue(file, setting, "Base doesn't exist!");
                                     break;
                                 case "behavior":
-                                    if(val.ToLower() != "nothing")
-                                        Logger.LogInvalidValue(file, setting, "Invalid behavior");
+                                    if (!LeaderStateGraphExists(val))
+                                        Logger.LogInvalidValue(file, setting, "Invalid behavior! Has to be a leader state graph from AI\\state_graph.db.");
                                     break;
                                 case "archetype":
                                     if(!SolarChecks.ArchetypeExists(val))
@@ -861,9 +857,36 @@ asteroid_loot_commodity = commodity_gold*/
             }
         }
 
+        private const string stateGraphFile = @"AI\state_graph.db";
+        // The leader state graphs of vanilla's AI\state_graph.db
+        private static readonly string[] vanillaLeaderStateGraphs = { "nothing", "player", "fighter", "transport", "gunboat", "cruiser" };
+        private static HashSet<string> leaderStateGraphs;
+
+        /// <summary>
+        /// True if AI\state_graph.db has a leader state graph with this name. Content.dll looks up the behavior of
+        /// a system object with pub::StateGraph::get_state_graph(name, LEADER), which ignores the case.
+        /// </summary>
+        public static bool LeaderStateGraphExists(string name)
+        {
+            if (leaderStateGraphs == null)
+            {
+                // The file lists each state graph as its name, followed by its type (LEADER or ESCORT) on the
+                // next line, followed by its numbers
+                string[] names = vanillaLeaderStateGraphs;
+                if (Checker.FileExistsOnDisk(stateGraphFile))
+                {
+                    string[] lines = File.ReadAllLines(Path.Combine(Checker.flDataPath, stateGraphFile)).Select(l => l.Trim()).ToArray();
+                    names = lines.Where((l, i) => i + 1 < lines.Length && lines[i + 1].ToUpper() == "LEADER").Select(l => l.ToLower()).ToArray();
+                }
+                leaderStateGraphs = new HashSet<string>(names);
+            }
+            return leaderStateGraphs.Contains(name.Trim().ToLower());
+        }
+
         public static void ParseUniverseFolder()
         {
             Logger.ILog("Parsing Universe-Folder");
+            leaderStateGraphs = null;
             universeFiles = Checker.flIni.GetSettings("Data", "universe").Select(s => s.Str(0)).ToArray();
             List<string> systemNicks = new List<string>();
             var baseNicks = new Dictionary<string, List<string>>();
