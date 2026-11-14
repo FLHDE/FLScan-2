@@ -22,7 +22,8 @@ namespace FLScanIE
         PetalDb = 128,
         Ship = 256,
         Solar = 512,
-        Universe = 1024
+        Universe = 1024,
+        Nicknames = 2048
     }
 
     public static class Checker
@@ -138,6 +139,8 @@ namespace FLScanIE
             }
             if (ShouldCheck(Checks.Fonts))
                 Util.RunCheck(FontChecks.CheckFontFolder, "fonts");
+            if (ShouldCheck(Checks.Nicknames))
+                Util.RunCheck(NicknameChecks.CheckNicknames, "nicknames");
         }
 
         private static bool ShouldCheck(Checks check)
@@ -234,6 +237,14 @@ namespace FLScanIE
         /// vanilla copy is returned (<see cref="FLDataFile.IsVanillaCopy"/>), which only contains the settings the
         /// parse stage reads. Returns null if the file doesn't exist; that has to be reported by the caller.
         /// </summary>
+        /// <summary>
+        /// The paths (relative to DATA, lowercase) of all vanilla INIs, or none if vanilla files aren't assumed to exist.
+        /// </summary>
+        internal static IEnumerable<string> VanillaIniFiles
+        {
+            get { return assumeVanillaFilesExist ? (IEnumerable<string>)vanillaInis.Keys : new string[0]; }
+        }
+
         public static FLDataFile LoadIni(string relFilePath, bool multiFields = true)
         {
             if (FileExistsOnDisk(relFilePath))

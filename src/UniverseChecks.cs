@@ -26,6 +26,9 @@ namespace FLScanIE
         //                         sys      systems it has a jump gate or hole to (all lowercase)
         private static Dictionary<string, HashSet<string>> systemConnections;
 
+        // The system and object (lowercase) each jump gate or hole leads to. Key: "system:object"
+        private static Dictionary<string, string[]> jumpTargets;
+
         // The game reads these files instead of computing the routes itself
         private static readonly string[] shortestPathFiles =
             { @"universe\shortest_illegal_path.ini", @"universe\shortest_legal_path.ini", @"universe\systems_shortest_path.ini" };
@@ -672,10 +675,15 @@ namespace FLScanIE
                                     string goto_sys = setting.Str(0);
                                     string goto_obj = setting.Str(1);
                                     string goto_eff = setting.Str(2);
+                                    string[] back;
                                     if(!SystemExists(goto_sys))
                                         Logger.LogInvalidValue(file, setting, "System doesn't exist!", goto_sys);
                                     else if(!ObjectExists(goto_sys, goto_obj))
                                         Logger.LogInvalidValue(file, setting, "Object doesn't exist!", goto_obj);
+                                    // The jump gate or hole on the other side has to lead back to this one
+                                    else if (nick != null && (!jumpTargets.TryGetValue(goto_sys.ToLower() + ":" + goto_obj.ToLower(), out back)
+                                        || back[0] != sysnick.ToLower() || back[1] != nick.ToLower()))
+                                        Logger.LogInvalidValue(file, setting, "The target doesn't lead back to this object!", goto_obj);
                                     if(!FXChecks.EffectExists(goto_eff))
                                         Logger.LogInvalidValue(file, setting, "Effect doesn't exist!", goto_eff);
                                     break;
@@ -862,6 +870,7 @@ asteroid_loot_commodity = commodity_gold*/
             var objectNicks = new Dictionary<string, Dictionary<string, List<string>>>();
             baseFiles = new Dictionary<string, string>();
             systemConnections = new Dictionary<string, HashSet<string>>();
+            jumpTargets = new Dictionary<string, string[]>();
 
             foreach (var universeFile in universeFiles)
             {
@@ -983,12 +992,15 @@ asteroid_loot_commodity = commodity_gold*/
                         objectNicks[system][section.sectionName].Add(nick.ToLower());
 
                         // goto = system, object, effect
-                        string gotoSystem = section.sectionName == "object" ? Util.TryGetStrSetting(section, "goto") : null;
-                        if (gotoSystem != null)
+                        var gotoSetting = section.sectionName == "object" ? Util.TryGetSetting(section, "goto") : null;
+                        if (gotoSetting != null && gotoSetting.NumValues() > 0)
                         {
+                            string gotoSystem = gotoSetting.Str(0).Trim().ToLower();
                             if (!systemConnections.ContainsKey(system))
                                 systemConnections[system] = new HashSet<string>();
-                            systemConnections[system].Add(gotoSystem.Trim().ToLower());
+                            systemConnections[system].Add(gotoSystem);
+                            if (gotoSetting.NumValues() > 1)
+                                jumpTargets[system + ":" + nick.ToLower()] = new[] { gotoSystem, gotoSetting.Str(1).Trim().ToLower() };
                         }
                         break;
 
