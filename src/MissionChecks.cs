@@ -246,7 +246,7 @@ namespace FLScanIE
                     else if (set.settingName.ToLowerInvariant() == "pilot")
                     {
                         if (!MissionFileChecks.PilotExists(set.Str(0)))
-                            Logger.LogInvalidValue(npcShipPath, set, "Pilot doesn't exist! The ship gets the default AI personality.");
+                            Logger.LogInvalidValue(npcShipPath, set, "Pilot doesn't exist! The ship gets the default AI personality.", LogLevel.info); // Info for now: vanilla and HD have such pilots
                     }
                     else if (set.settingName.ToLowerInvariant() == "state_graph")
                     {
