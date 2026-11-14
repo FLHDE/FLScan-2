@@ -37,6 +37,12 @@ namespace FLScanIE
         // Faction ([Group]) nicknames from initialworld.ini (lowercase), or null if that file isn't present
         private static HashSet<string> factionNicks;
         private static string[] hotspotNames = Util.LoadConfig("BaseHotspotNames");
+        // Room file sections and keys that common.dll warns about as obsolete
+        private static readonly string[] obsoleteRoomSections = { "cloud", "fog", "goodscartplacement", "repairrobotplacement",
+            "goodspileplacement", "shipplacement", "monitorplacement", "effect", "availableship", "billboard", "light", "lighting" };
+        private static readonly string[] obsoleteRoomKeys = { "mesh", "background_script", "background_script_oneshot", "mission_vendor_type",
+            "goodscart_script_fighter", "goodscart_script_elite", "goodscart_script_freighter", "is_outside" };
+        private static readonly string[] obsoleteCameraKeys = { "index", "near_plane", "far_plane" };
         private static string[] hotspotBehaviors = Util.LoadConfig("BaseHotspotBehaviors");
 
         public static void CheckUniverseFolder()
@@ -124,6 +130,27 @@ namespace FLScanIE
                 else if (!Checker.FileExists(values[1]))
                     Logger.LogFileNotFound(file, scene, values[1]);
             }
+
+            // [Room_Sound] (or [Sound]): music and ambient = sound[, oneshot]
+            foreach (var sound in ini.GetSettings("Room_Sound").Concat(ini.GetSettings("Sound")))
+            {
+                string key = sound.settingName.ToLower();
+                if ((key == "music" || key == "ambient") && sound.NumValues() > 0 && !AudioChecks.SoundExists(sound.Str(0)))
+                    Logger.LogInvalidValue(file, sound, "Sound doesn't exist!");
+            }
+
+            // The sections and keys common.dll warns about as obsolete (or reports as an error)
+            foreach (var section in ini.sections.Where(sec => obsoleteRoomSections.Contains(sec.sectionName.ToLower())))
+                Logger.WLog(string.Format("{0}:{1}: [{2}] is obsolete. The game ignores it.", file, Util.GetSectionIdentifier(section), section.sectionName));
+            var obsoleteKeys = roomInfoSettings.Where(s => obsoleteRoomKeys.Contains(s.settingName.ToLower()))
+                .Concat(ini.GetSettings("Camera").Where(s => obsoleteCameraKeys.Contains(s.settingName.ToLower())));
+            foreach (var setting in obsoleteKeys)
+                Logger.LogInvalidValue(file, setting, "Obsolete! The game ignores it.", LogLevel.warning);
+            foreach (var setting in roomInfoSettings.Where(s => s.settingName.ToLower() == "news_material")
+                .Concat(ini.GetSettings("CharacterPlacement").Where(s => s.settingName.ToLower() == "zoom_in" || s.settingName.ToLower() == "zoom_out")))
+                Logger.LogInvalidValue(file, setting, "Obsolete! The game reports an error.");
+            foreach (var section in ini.sections.Where(sec => sec.sectionName.ToLower() == "characterplacement" && !sec.SettingExists("name")))
+                Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), section.sectionName, "name");
 
             foreach (var hotspot in ini.GetSettings("Hotspot"))
             {

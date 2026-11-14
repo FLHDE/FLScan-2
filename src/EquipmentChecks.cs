@@ -556,6 +556,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         if(!UniverseChecks.BaseExists(Base))
                             Logger.LogInvalidValue(file, section.GetSetting("base"), "Base doesn't exist!");
+                        int baseIndex = section.settings.IndexOf(section.GetSetting("base"));
 
                         var MarketGoods = section.GetSettings("MarketGood").ToArray();
                         foreach (var marketGood in MarketGoods)
@@ -571,8 +572,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             string[] args = marketGood.values.Select(s => s.ToString().Trim()).ToArray();
                             string equipNick = args[0];
                             Func<int, string> arg = i => i < args.Length && args[i] != "" ? args[i] : null;
-                            float level, rep, multip;
-                            int min, max, transactionType;
+                            float level = 0, rep = -1, multip = 1;
+                            int min = 0, max = 0, transactionType = 0;
 
                             if (arg(1) != null && !float.TryParse(arg(1), NumberStyles.Float, CultureInfo.InvariantCulture, out level))
                                 Logger.LogInvalidValue(file, marketGood, "Invalid level! Has to be a number!", arg(1));
@@ -595,7 +596,18 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                             if (!GoodExists(equipNick))
                                 Logger.LogInvalidValue(file, marketGood, "Equipment doesn't exist!", equipNick);
+
+                            // Common.dll only adds a line once a base line came before it, and drops a line whose
+                            // values are all the defaults (level 0, rep -1, min 0, max 0, type 0, multiplier 1)
+                            if (section.settings.IndexOf(marketGood) < baseIndex)
+                                Logger.LogInvalidValue(file, marketGood, "The game ignores this line, because it comes before the base line!", LogLevel.warning);
+                            else if (level == 0 && rep == -1 && min == 0 && max == 0 && transactionType == 0 && multip == 1)
+                                Logger.LogInvalidValue(file, marketGood, "The game ignores this line, because all its values are the defaults!", LogLevel.warning);
                         }
+
+                        // Common.dll warns about any other key
+                        foreach (var setting in section.settings.Where(st => st.settingName.ToLower() != "base" && st.settingName.ToLower() != "marketgood"))
+                            Logger.LogInvalidValue(file, setting, "Unknown key! The game ignores it.", setting.settingName, LogLevel.warning);
                         break;
                     default:
                         Logger.WLog(string.Format("Unexpected section {0} in file {1}", section.sectionName, file));
