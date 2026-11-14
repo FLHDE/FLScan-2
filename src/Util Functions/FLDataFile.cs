@@ -218,6 +218,11 @@ namespace FLScanIE.Util_Functions
         public bool wasEncrypted = false;
 
         /// <summary>
+        /// True if this is the stripped-down copy of a vanilla file that isn't present (see Checker.LoadIni)
+        /// </summary>
+        public bool IsVanillaCopy = false;
+
+        /// <summary>
         /// The ini file contents - decrypted if necessary
         /// </summary>
         private string contents;
@@ -263,6 +268,7 @@ namespace FLScanIE.Util_Functions
         /// <param name="multiFields">if true commas delimit fields</param>
         public FLDataFile(byte[] buf, string fileName, bool multiFields)
         {
+            this.multiFields = multiFields;
             this.filePath = fileName;
             Parse(buf, fileName);
         }

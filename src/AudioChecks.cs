@@ -55,7 +55,10 @@ namespace FLScanIE
 
             foreach (var voiceFile in voiceFiles)
             {
-                FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, voiceFile), false);
+                // Missing files are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(voiceFile, false);
+                if (ini == null)
+                    continue;
                 var allSettings = ini.sections.SelectMany(s => s.settings).Where(s => s.sectionName.ToLower() == "sound" || s.sectionName.ToLower() == "voice").ToArray();
                 voiceMsgs.AddRange(allSettings.Where(s => s.settingName == "msg").Select(s => s.Str(0).ToLower()).ToArray());
                 voiceNicks.AddRange(allSettings.Where(s => s.settingName == "nickname").Select(s => s.Str(0).ToLower()).ToArray());

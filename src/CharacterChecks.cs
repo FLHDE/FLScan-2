@@ -135,7 +135,10 @@ namespace FLScanIE
 
         private static void ParseCostumeFile(string file, ref List<string> costumeNicks)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
 
             foreach (var section in ini.sections)
             {
@@ -153,7 +156,10 @@ namespace FLScanIE
 
         private static void ParseBodypartFile(string file, ref Dictionary<string, List<string>> bodyparts)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
 
             foreach (var section in ini.sections)
             {

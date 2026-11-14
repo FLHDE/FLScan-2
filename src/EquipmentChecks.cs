@@ -586,7 +586,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             }
             foreach (var weaponModFile in weaponModFiles)
             {
-                FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, weaponModFile), true);
+                // Missing files are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(weaponModFile);
+                if (ini == null)
+                    continue;
                 weaponTypes.AddRange(ini.GetSettings("WeaponType", "nickname").Select(s => s.Str(0)));
             }
 
@@ -600,7 +603,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
         private static void ParseEquipFile(string file, ref List<string> explosionNicks, ref Dictionary<string, List<string>> equipNicks)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
             var sections = ini.sections;
 
             foreach (var section in sections)
@@ -672,7 +678,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
         private static void ParseGoodFile(string file, ref List<string> goodNicknames)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
             foreach (var section in ini.sections)
             {
                 switch (section.sectionName.ToLower())
@@ -699,7 +708,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
         private static void ParseMarketFile(string file)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
             var sections = ini.sections;
 
             foreach (var section in sections)

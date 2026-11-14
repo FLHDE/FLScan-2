@@ -31,7 +31,10 @@ namespace FLScanIE.Util_Functions
 
             foreach (var ini in inis)
             {
-                FLDataFile file = new FLDataFile(Checker.flDataPath + Path.DirectorySeparatorChar + ini, true);
+                // Missing files are reported by Checker.Parse
+                FLDataFile file = Checker.LoadIni(ini);
+                if (file == null)
+                    continue;
 
                 foreach (var section in sections)
                     nicks.AddRange(file.GetSettings(section).Where(s => names.Contains(s.settingName)).Select(s => s.Str(0)));
@@ -176,13 +179,14 @@ namespace FLScanIE.Util_Functions
                 return retn;
             }
 
-            if (section.SettingExists(utf))
+            string relUtfFile = TryGetStrSetting(section, utf);
+            if (relUtfFile != null)
             {
-                string utfFile = Path.Combine(flDataPath, section.GetSetting(utf).Str(0));
-                if (File.Exists(utfFile))
+                if (Checker.FileExistsOnDisk(relUtfFile))
                 {
                     if (!Checker.DisableUTF)
                     {
+                        string utfFile = Path.Combine(flDataPath, relUtfFile);
                         try
                         {
                             retn.UtfFile = new UtfFile(utfFile);
@@ -193,7 +197,14 @@ namespace FLScanIE.Util_Functions
                         }
                     }
                 }
-                else if (!Checker.HasVanillaFile(utfFile))
+                else if (Checker.HasVanillaFile(relUtfFile))
+                {
+                    // A vanilla model that isn't present: use its known hardpoints, if any
+                    string[] hardpoints = Checker.GetVanillaHardpoints(relUtfFile);
+                    if (!Checker.DisableUTF && hardpoints != null)
+                        retn.UtfFile = UtfFile.FromHardpoints(relUtfFile, hardpoints);
+                }
+                else
                     Logger.LogFileNotFound(file, section.GetSetting(utf));
             }
             else if(errorUtf)
@@ -265,11 +276,16 @@ namespace FLScanIE.Util_Functions
 #endif
         }
 
+        /// <summary>
+        /// Runs a check on each file (relative to DATA). Files that aren't present are skipped: vanilla files can't
+        /// be checked, and missing files are reported where they are referenced.
+        /// </summary>
         public static void RunChecks(CheckFileDelegate check, IEnumerable<string> files)
         {
             foreach (var file in files)
             {
-                RunCheck(check, file);
+                if (Checker.FileExistsOnDisk(file))
+                    RunCheck(check, file);
             }
         }
 
@@ -320,13 +336,14 @@ namespace FLScanIE.Util_Functions
         /// </summary>
         public static string[] ParseShapeFile(string file, FLDataFile.Setting refSet, string refFile)
         {
-            if (!Checker.FileExistsOnDisk(file))
+            // A vanilla shape file that isn't present is read from the vanilla definitions
+            FLDataFile ini = Checker.LoadIni(file, false);
+            if (ini == null)
             {
                 if (!Checker.FileExists(file))
                     Logger.LogFileNotFound(refFile, refSet);
                 return null;
             }
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
             List<string> values = new List<string>();
 
             foreach (var set in ini.sections.SelectMany(s => s.settings))

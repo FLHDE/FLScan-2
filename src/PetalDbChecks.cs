@@ -26,7 +26,10 @@ namespace FLScanIE
 
             foreach (var pentalDBfile in pentalDBfiles)
             {
-                FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, pentalDBfile), true);
+                // Missing files are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(pentalDBfile);
+                if (ini == null)
+                    continue;
 
                 var settings = ini.GetSettings("ObjectTable");
                 foreach (var setting in settings)
