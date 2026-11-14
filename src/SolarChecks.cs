@@ -201,8 +201,8 @@ namespace FLScanIE
             SolarChecks.solarNicknames = solarNicknames.Select(n => n.ToLower()).ToArray();
 
             string[][] asteroids = Util.GetNicks("Data", "asteroids", new[] { "DynamicAsteroid", "Asteroid", "AsteroidMine" }, "nickname");
-            SolarChecks.asteroidFiles = asteroids[0].Select(n => n.ToLower()).ToArray();
-            SolarChecks.asteroidNicknames = asteroids[1];
+            SolarChecks.asteroidFiles = asteroids[0];
+            SolarChecks.asteroidNicknames = asteroids[1].Select(n => n.ToLower()).ToArray();
 
             List<string> starNicknames = new List<string>();
             List<string> star_GlowNicknames = new List<string>();

@@ -56,16 +56,29 @@ namespace FLScanIE
         /// </summary>
         static List<ResourceDLL> vDLLs = new List<ResourceDLL>();
 
+        /// <summary>
+        /// Loads a resource DLL into the next slot. A DLL that can't be loaded keeps its slot (with a zero handle),
+        /// because the slot number is part of the IDs of all DLLs after it.
+        /// </summary>
         static private void LoadLibrary(string dllPath)
         {
             IntPtr hInstance = LoadLibraryExA(dllPath, 0, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE);
-            if (hInstance != IntPtr.Zero)
-            {
-                ResourceDLL dll = new ResourceDLL();
-                dll.path = dllPath;
-                dll.hInstance = hInstance;
-                vDLLs.Add(dll);
-            }
+            if (hInstance == IntPtr.Zero)
+                Logger.ELog("Resource DLL could not be loaded: " + dllPath);
+
+            ResourceDLL dll = new ResourceDLL();
+            dll.path = dllPath;
+            dll.hInstance = hInstance;
+            vDLLs.Add(dll);
+        }
+
+        /// <summary>
+        /// True if the ID belongs to a resource DLL that couldn't be loaded, so it can't be checked.
+        /// </summary>
+        public static bool IsInUnloadedDll(uint IDS)
+        {
+            int slot = (int)(IDS >> 16);
+            return slot < vDLLs.Count && vDLLs[slot].hInstance == IntPtr.Zero;
         }
 
         public static bool IsName(int IDS)
@@ -128,6 +141,8 @@ namespace FLScanIE
             {
                 IntPtr hInstance = vDLLs[iDLL].hInstance;
                 string dllPath = vDLLs[iDLL].path;
+                if (hInstance == IntPtr.Zero)
+                    continue; // Reported by LoadLibrary
                 Logger.ILog("Parsing " + dllPath);
 
                 for (int resId = 0; resId < 0x10000; resId++)
@@ -236,9 +251,12 @@ namespace FLScanIE
                 }
             }
 
-            // Unload the dlls.
+            // Unload the dlls. The slots are kept for IsInUnloadedDll.
             foreach (ResourceDLL dll in vDLLs)
-                FreeLibrary(dll.hInstance);
+            {
+                if (dll.hInstance != IntPtr.Zero)
+                    FreeLibrary(dll.hInstance);
+            }
             Logger.ILog("Finished infocards");
         }
     }

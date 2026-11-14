@@ -179,7 +179,8 @@ namespace FLScanIE
 
             if (ship.SettingExists("pilot_mesh"))
             {
-                if (!simpleNicknames.Contains(ship.GetSetting("pilot_mesh").Str(0)))
+                // simpleNicknames are lowercase
+                if (!simpleNicknames.Contains(ship.GetSetting("pilot_mesh").Str(0).ToLower()))
                     Logger.LogInvalidValue(file, ship.GetSetting("pilot_mesh"), "Simple doesn't exist!");
             }
             //else
