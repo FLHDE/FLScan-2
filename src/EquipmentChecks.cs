@@ -440,8 +440,11 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         shop_archetype = Util.TryGetStrSetting(section, "shop_archetype");
                         msg_id_prefix = Util.TryGetStrSetting(section, "msg_id_prefix");
 
+                        // name and info_desc are aliases of ids_name and ids_info (common.dll)
                         Util.CheckIDName(section, "ids_name", nick, file);
+                        Util.CheckIDName(section, "name", nick, file);
                         Util.CheckIDInfo(section, "ids_info", nick, file);
+                        Util.CheckIDInfo(section, "info_desc", nick, file);
 
                         if (category != null && !GoodCategories.Contains(category.ToLower()))
                             Logger.LogInvalidValue(file, section.GetSetting("category"), "Not a valid category!");

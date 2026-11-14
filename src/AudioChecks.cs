@@ -56,7 +56,8 @@ namespace FLScanIE
                 FLDataFile ini = Checker.LoadIni(voiceFile, false);
                 if (ini == null)
                     continue;
-                var allSettings = ini.sections.SelectMany(s => s.settings).Where(s => s.sectionName.ToLower() == "sound" || s.sectionName.ToLower() == "voice").ToArray();
+                // The game also reads [VoiceSound] as a [Sound] of the [Voice] before it (freelancer.exe)
+                var allSettings = ini.sections.SelectMany(s => s.settings).Where(s => s.sectionName.ToLower() == "sound" || s.sectionName.ToLower() == "voicesound" || s.sectionName.ToLower() == "voice").ToArray();
                 voiceMsgs.AddRange(allSettings.Where(s => s.settingName == "msg").Select(s => s.Str(0).ToLower()).ToArray());
                 voiceNicks.AddRange(allSettings.Where(s => s.settingName == "nickname").Select(s => s.Str(0).ToLower()).ToArray());
             }
