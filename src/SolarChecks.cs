@@ -52,6 +52,7 @@ namespace FLScanIE
                 switch (solar.settingName)
                 {
                     case "DA_archetype":
+                    case "attachment_archetype":
                     case "material_library":
                         if (!Checker.FileExists(solar.Str(0)))
                             Logger.LogFileNotFound(file, solar);
@@ -147,6 +148,7 @@ namespace FLScanIE
                 switch (asteroid.settingName)
                 {
                     case "DA_archetype":
+                    case "attachment_archetype":
                     case "material_library":
                         if (!Checker.FileExists(asteroid.Str(0)))
                             Logger.LogFileNotFound(file, asteroid);

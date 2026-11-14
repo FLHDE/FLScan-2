@@ -160,7 +160,18 @@ namespace FLScanIE.Util_Functions
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, bool errorUtf)
         {
-            return ParseNickUTF(flDataPath, file, section, "nickname", "DA_archetype", errorUtf);
+            return ParseNickUTF(flDataPath, file, section, "nickname", DaArchetypeKey(section), errorUtf);
+        }
+
+        /// <summary>
+        /// The key that gives the model of an archetype: DA_archetype, or its alias attachment_archetype. Common.dll
+        /// reads both into the same field, so the last one is used.
+        /// </summary>
+        public static string DaArchetypeKey(FLDataFile.Section section)
+        {
+            var last = section.settings.LastOrDefault(s => s.settingName.ToLowerInvariant() == "da_archetype"
+                || s.settingName.ToLowerInvariant() == "attachment_archetype");
+            return last == null ? "DA_archetype" : last.settingName;
         }
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, string nick, string utf)

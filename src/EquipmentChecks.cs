@@ -90,14 +90,34 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             }
         }
 
-        private static string[] hasIDS = new string[] { "Commodity", "ShieldGenerator", "Engine", "CounterMeasure", "CounterMeasureDropper", "RepairKit", "Scanner", "ShieldBattery", "Tractor", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition"}.Select(s => s.ToLower()).ToArray();
-        private static string[] hasArchetype = new string[] { "LootCrate", "Shield", "CargoPod", "ShieldGenerator", "Power", "CounterMeasure", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition", "CounterMeasureDropper" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasMaterial = new string[] { "LootCrate", "CargoPod", "ShieldGenerator", "Power", "CounterMeasureDropper", "CloakingDevice", "Gun", "Mine", "MineDropper" }.Select(s => s.ToLower()).ToArray();
+        /// <summary>
+        /// The kinds of equipment that common.dll reads from the equipment files (lowercase). They all read the keys
+        /// of an archetype (ids_name, ids_info, explosion_arch, DA_archetype) and the client reads material_library.
+        /// </summary>
+        public static readonly string[] EquipmentKinds = { "armor", "attachedfx", "internalfx", "power", "thruster", "shield",
+            "shieldgenerator", "shieldbattery", "repairkit", "repairdroid", "countermeasure", "countermeasuredropper", "gun",
+            "minedropper", "mine", "munition", "scanner", "tractor", "engine", "cloakingdevice", "tradelane", "cargopod",
+            "lootcrate", "commodity", "light" };
+        // The kinds that are attached equipment in common.dll, which also read separation_explosion, debris_type and HP_child
+        private static readonly string[] attachedEquipmentKinds = { "shield", "shieldgenerator", "thruster", "gun", "minedropper",
+            "countermeasuredropper", "cargopod", "cloakingdevice" };
         private static string[] hasLootAppearance = new string[] { "Commodity", "CounterMeasure", "RepairKit", "ShieldBattery", "Mine", "Munition" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasSeparationExplosion = new string[] { "CounterMeasureDropper", "Gun", "MineDropper", "ShieldGenerator", "Thruster", "CollisionGroup" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasExplosionArch = new string[] { "LootCrate", "CargoPod", "Mine", "Munition", "Ship", "Asteroid", "AsteroidMine", "DynamicAsteroid", "Solar" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasDebris = new string[] { "CargoPod", "ShieldGenerator", "CounterMeasureDropper", "Gun", "MineDropper" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasHpChild = new string[] { "CargoPod", "Shield", "ShieldGenerator", "CounterMeasureDropper", "CloakingDevice", "Gun", "MineDropper" }.Select(s => s.ToLower()).ToArray();
+
+        /// <summary>
+        /// Checks a list of hardpoint types, like hp_gun_type. The game reads every value of every line, and skips the
+        /// types it doesn't know.
+        /// </summary>
+        private static void CheckHpTypeList(string file, FLDataFile.Section section, string key)
+        {
+            foreach (var setting in section.GetSettings(key))
+            {
+                foreach (string hpType in setting.values.Select(v => v.ToString().Trim()).TakeWhile(v => v != ""))
+                {
+                    if (!HpTypeExists(hpType))
+                        Logger.LogInvalidValue(file, setting, "Invalid hardpoint-type!", hpType);
+                }
+            }
+        }
 
         private static void CheckEquipmentFile(string file)
         {
@@ -110,22 +130,23 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     nick = nick.ToLower();
                 string cat = section.sectionName.ToLower();
 
-                if(hasIDS.Contains(cat))
+                if (EquipmentKinds.Contains(cat))
                 {
                     Util.CheckIDInfo(section, "ids_info", nick, file);
                     Util.CheckIDName(section, "ids_name", nick, file);
-                }
-                if (hasArchetype.Contains(cat))
-                {
-                    string arch = Util.TryGetStrSetting(section, "da_archetype");
-                    if (arch != null && !Checker.FileExists(arch))
-                        Logger.LogFileNotFound(file, section.GetSetting("da_archetype"));
-                }
-                if (hasMaterial.Contains(cat))
-                {
-                    string mat = Util.TryGetStrSetting(section, "material_library");
-                    if (mat != null && !Checker.FileExists(mat))
-                        Logger.LogFileNotFound(file, section.GetSetting("material_library"));
+
+                    // A missing DA_archetype is reported by ParseEquipFile
+
+                    // The client loads every material_library
+                    foreach (var mat in section.GetSettings("material_library").Where(m => m.NumValues() > 0))
+                    {
+                        if (!Checker.FileExists(mat.Str(0)))
+                            Logger.LogFileNotFound(file, mat);
+                    }
+
+                    string expl = Util.TryGetStrSetting(section, "explosion_arch");
+                    if (expl != null && !FXChecks.ExplosionExists(expl))
+                        Logger.LogInvalidValue(file, section.GetSetting("explosion_arch"), "Explosion doesn't exist!");
                 }
                 if (hasLootAppearance.Contains(cat))
                 {
@@ -133,27 +154,17 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     if (app != null && !EquipExists(app, "lootcrate"))
                         Logger.LogInvalidValue(file, section.GetSetting("loot_appearance"), "LootCrate doesn't exist!");
                 }
-                if (hasSeparationExplosion.Contains(cat))
+                if (attachedEquipmentKinds.Contains(cat))
                 {
                     // This refers to an [Explosion], e.g. sever_debris in fx\explosions.ini
                     string expl = Util.TryGetStrSetting(section, "separation_explosion");
                     if (expl != null && !FXChecks.ExplosionExists(expl))
                         Logger.LogInvalidValue(file, section.GetSetting("separation_explosion"), "Explosion doesn't exist!");
-                }
-                if (hasExplosionArch.Contains(cat))
-                {
-                    string expl = Util.TryGetStrSetting(section, "explosion_arch");
-                    if (expl != null && !FXChecks.ExplosionExists(expl))
-                        Logger.LogInvalidValue(file, section.GetSetting("explosion_arch"), "Explosion doesn't exist!");
-                }
-                if (hasDebris.Contains(cat))
-                {
+
                     string debris = Util.TryGetStrSetting(section, "debris_type");
                     if (debris != null && !FXChecks.DebrisExists(debris))
                         Logger.LogInvalidValue(file, section.GetSetting("debris_type"), "Debris doesn't exist!");
-                }
-                if (hasHpChild.Contains(cat))
-                {
+
                     string hp_child = Util.TryGetStrSetting(section, "hp_child");
                     if (hp_child != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(hp_child))
                         Logger.LogHardpoint(file, section.GetSetting("hp_child"));
@@ -206,6 +217,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("shield_rebuilt_sound"), "Sound doesn't exist!");
                         if (sh_collapse_eff != null && !FXChecks.EffectExists(sh_collapse_eff))
                             Logger.LogInvalidValue(file, section.GetSetting("shield_collapse_particle"), "Effect doesn't exist!");
+                        CheckHpTypeList(file, section, "hp_shield_type");
                         // shield_hit_effects = threshold, effect, ... (repeatable)
                         foreach (var hitEffects in section.GetSettings("shield_hit_effects"))
                         {
@@ -317,15 +329,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                      */
                         string gun_snd = Util.TryGetStrSetting(section, "dry_fire_sound");
                         string gun_particle = Util.TryGetStrSetting(section, "flash_particle_name");
-                        string gun_hpType = Util.TryGetStrSetting(section, "hp_gun_type");
                         string gun_projArch = Util.TryGetStrSetting(section, "projectile_archetype");
 
                         if (gun_snd != null && !AudioChecks.SoundExists(gun_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("dry_fire_sound"), "Sound doesn't exist!");
                         if(gun_particle != null && !FXChecks.EffectExists(gun_particle))
                             Logger.LogInvalidValue(file, section.GetSetting("flash_particle_name"), "Effect doesn't exist!");
-                        if(gun_hpType != null && !HpTypeExists(gun_hpType))
-                            Logger.LogInvalidValue(file, section.GetSetting("hp_gun_type"), "Invalid hardpoint-type!");
+                        CheckHpTypeList(file, section, "hp_gun_type");
                         if (gun_projArch != null && !EquipExists(gun_projArch, "munition"))
                             Logger.LogInvalidValue(file, section.GetSetting("projectile_archetype"), "Munition doesn't exist!");
 
@@ -384,6 +394,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         break;
                     case "armor":
                     case "internalfx":
+                    case "repairdroid":
                     case "motor": // TODO
                         break;
                     default:
@@ -660,6 +671,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     case "shieldgenerator":
                     case "shieldbattery":
                     case "repairkit":
+                    case "repairdroid":
                     case "countermeasure":
                     case "countermeasuredropper":
                     case "gun":
@@ -682,7 +694,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if(!equipUtf.ContainsKey(cat))
                             equipUtf[cat] = new Dictionary<string, UtfFile>();
 
-                        var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", "da_archetype", false);
+                        var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", Util.DaArchetypeKey(section), false);
                         if (nickUtfTuple.Nick == null)
                             break;
                         nickUtfTuple.Nick = nickUtfTuple.Nick.ToLower();
