@@ -314,8 +314,9 @@ namespace FLScanIE.Util_Functions
 
             while (p < buf.Length && p < strTableOffset)
             {
-                int sectionStrOffset = System.BitConverter.ToInt16(buf, p); p+=2;
-                int sectionNumEntries = System.BitConverter.ToInt16(buf, p); p+=2;
+                // Offsets and counts are unsigned 16-bit values
+                int sectionStrOffset = System.BitConverter.ToUInt16(buf, p); p+=2;
+                int sectionNumEntries = System.BitConverter.ToUInt16(buf, p); p+=2;
                 string sectionName = BufToString(buf, strTableOffset + sectionStrOffset);
 
                 Section section = new Section();
@@ -325,7 +326,7 @@ namespace FLScanIE.Util_Functions
 
                 while (sectionNumEntries-- > 0)
                 {
-                    int entryStrOffset = System.BitConverter.ToInt16(buf, p); p+=2;
+                    int entryStrOffset = System.BitConverter.ToUInt16(buf, p); p+=2;
                     int entryNumValues = buf[p++];
 
                     string settingName = BufToString(buf, strTableOffset + entryStrOffset);

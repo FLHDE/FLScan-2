@@ -43,7 +43,7 @@ namespace FLScanIE.Logging
         /// </summary>
         public override string ToString()
         {
-            return string.Format("{0} expected: ({1}), found {2}", base.ToString(), new string(ExpectedValueCount.SelectMany(i => i.ToString() + ",").Take(ExpectedValueCount.Length*2-1).ToArray()), FoundValueCount);
+            return string.Format("{0} expected: ({1}), found {2}", base.ToString(), string.Join(",", ExpectedValueCount.Select(i => i.ToString()).ToArray()), FoundValueCount);
         }
     }
 }

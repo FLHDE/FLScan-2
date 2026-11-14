@@ -63,6 +63,9 @@ namespace FLScanIE
         static Dictionary<string, NPCSHIPARCH> npcships = new Dictionary<string, NPCSHIPARCH>();
         static Dictionary<string, FACTIONPROPS> factionprops = new Dictionary<string, FACTIONPROPS>();
         static Dictionary<string, ZONE> zones = new Dictionary<string, ZONE>();
+        // Encounter files are checked again for each zone and faction that uses them. Errors that don't depend
+        // on the faction are only reported once (key: setting description + message).
+        static HashSet<string> reportedEncounterErrors = new HashSet<string>();
 
         /// <summary>
         /// Loads an ini file (relative to DATA). Returns null if it doesn't exist, logging an error unless it is a
@@ -532,14 +535,19 @@ namespace FLScanIE
                         // Check The npc_class must be a member of the [ShipClass]           
                         if (set.settingName == "ship_by_class")
                         {
-                            if (!Util.CheckNumberOfArgs(set, encounterFile, 3, 4))
+                            if (set.NumValues() != 3 && set.NumValues() != 4)
+                            {
+                                if (reportedEncounterErrors.Add(set.desc + "|argcount"))
+                                    Util.CheckNumberOfArgs(set, encounterFile, 3, 4);
                                 continue;
+                            }
 
                             // Check that the ship class exists
                             string ship_class = set.Str(2).ToLowerInvariant();
                             if (!shipclasses.ContainsKey(ship_class))
                             {
-                                Logger.ELog(String.Format("{0}: missing shipclass, ship_class={1} ref={2}", set.desc, ship_class, referencedFrom));
+                                if (reportedEncounterErrors.Add(set.desc + "|shipclass"))
+                                    Logger.ELog(String.Format("{0}: missing shipclass, ship_class={1} ref={2}", set.desc, ship_class, referencedFrom));
                                 continue;
                             }
 
@@ -608,6 +616,7 @@ namespace FLScanIE
                 npcships.Clear();
                 factionprops.Clear();
 				zones.Clear();
+                reportedEncounterErrors.Clear();
 
                 LoadFormations();
                 LoadShipClasses();

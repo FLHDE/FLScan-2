@@ -15,7 +15,9 @@ namespace FLScanIE
         [DllImport("User32")]
         private static extern int ShowWindow(int hwnd, int nCmdShow);
 
-        private static FileStream fs;
+        // Separate streams, so --log-html and --log-file can be used together
+        private static FileStream htmlFs;
+        private static FileStream fileFs;
 
         /// <summary>
         /// The main entry point for the application.
@@ -40,8 +42,10 @@ namespace FLScanIE
                 {
                     // Make sure all pending log entries are written before the log file gets closed.
                     Logger.WaitForEnd();
-                    try { fs.Close(); }
-                    catch { }
+                    if (htmlFs != null)
+                        htmlFs.Close();
+                    if (fileFs != null)
+                        fileFs.Close();
                 }
             Logger.Abort();
         }
@@ -109,20 +113,20 @@ namespace FLScanIE
                 Console.WriteLine("FLScanII.exe --flpath=C:\\Freelancer --disable-universe");
                 Console.WriteLine("FLScanII.exe --flpath=C:\\Freelancer --log-html=MyFile.html");
                 Console.WriteLine("Logging to console and to a file:");
-                Console.WriteLine("FLScanII.exe --flpath=C:\\Freelancer --log-file=MyFile.html --log-console");
+                Console.WriteLine("FLScanII.exe --flpath=C:\\Freelancer --log-file=MyFile.txt --log-console");
                 return;
             }
 
+            // File.Create truncates existing files
             if (options.ContainsKey("--log-html"))
             {
-                File.Delete(options["--log-html"]);
-                fs = File.OpenWrite(options["--log-html"]);
-                WriteLineToFile(fs, "<html><body><h2>FLScanII Log</h2><table width=\"100%\" border=\"1\">");
+                htmlFs = File.Create(options["--log-html"]);
+                WriteLineToFile(htmlFs, "<html><body><h2>FLScanII Log</h2><table width=\"100%\" border=\"1\">");
                 Logger.HandleLog += LogToHTML;
             }
-            else if (options.ContainsKey("--log-file"))
+            if (options.ContainsKey("--log-file"))
             {
-                fs = File.OpenWrite(options["--log-file"]);
+                fileFs = File.Create(options["--log-file"]);
                 Logger.HandleLog += LogToFile;
             }
 
@@ -193,7 +197,7 @@ namespace FLScanIE
             Logger.WaitForEnd();
             if (options.ContainsKey("--log-html"))
             {
-                WriteLineToFile(fs, "</table></body></html>");
+                WriteLineToFile(htmlFs, "</table></body></html>");
             }
 
             if (Logger.LoggedErrorOrFatal() || (treatWarningsAsErrors && Logger.LoggedWarning))
@@ -223,7 +227,7 @@ namespace FLScanIE
 
         private static void LogToFile(LogEntry log)
         {
-            WriteLineToFile(fs, log.ToString());
+            WriteLineToFile(fileFs, log.ToString());
         }
 
         private static void LogToHTML(LogEntry log)
@@ -269,7 +273,7 @@ namespace FLScanIE
             }
             sb.Append("</tr>");
 
-            WriteLineToFile(fs, sb.ToString());
+            WriteLineToFile(htmlFs, sb.ToString());
         }
 
         private static void WriteLineToFile(FileStream fs, string str)

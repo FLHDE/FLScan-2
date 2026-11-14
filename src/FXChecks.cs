@@ -77,25 +77,22 @@ namespace FLScanIE
 
         private static void CheckVisEffect(FLDataFile.Section visEffect, string file)
         {
-            string alchemy = null;
+            string alchemy = Util.TryGetStrSetting(visEffect, "alchemy");
+            if (alchemy != null && !Checker.FileExists(alchemy))
+                Logger.LogFileNotFound(file, visEffect.GetSetting("alchemy"));
 
-            if (visEffect.SettingExists("alchemy"))
+            // A VisEffect usually has several textures entries
+            foreach (var textures in visEffect.GetSettings("textures"))
             {
-                alchemy = visEffect.GetSetting("alchemy").Str(0);
-                if (!Checker.FileExists(alchemy))
-                    Logger.LogFileNotFound(file, visEffect.GetSetting("alchemy"));
-            }
-
-            if (visEffect.SettingExists("textures"))
-            {
-                alchemy = visEffect.GetSetting("textures").Str(0);
-                if (!Checker.FileExists(alchemy))
-                    Logger.LogFileNotFound(file, visEffect.GetSetting("textures"));
+                if (textures.NumValues() > 0 && !Checker.FileExists(textures.Str(0)))
+                    Logger.LogFileNotFound(file, textures);
             }
 
             if (visEffect.SettingExists("effect_crc"))
             {
-                Int64 effectCrc = Int64.Parse(visEffect.GetSetting("effect_crc").Str(0));
+                Int64 effectCrc;
+                if (!Int64.TryParse(visEffect.GetSetting("effect_crc").Str(0), out effectCrc))
+                    Logger.LogInvalidValue(file, visEffect.GetSetting("effect_crc"), "Has to be a number!");
 
                 if(alchemy == null)
                     Logger.LogInvalidValue(file, visEffect.GetSetting("effect_crc"), "effect_crc exists but alchemy doesn't!");
