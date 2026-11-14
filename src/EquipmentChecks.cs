@@ -44,6 +44,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             Util.RunChecks(CheckEquipmentFile, equipmentFiles);
             CheckEquipmentReadOrder();
             Util.RunChecks(CheckGoodFile, goodFiles);
+            CheckGoodReadOrder();
             Util.RunChecks(CheckMarketFile, marketFiles);
             Util.RunChecks(CheckWeaponModFile, weaponModFiles);
             // commodities_per_faction.ini isn't referenced by freelancer.ini, but it's always loaded by the game
@@ -159,6 +160,64 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     string nick = Util.TryGetStrSetting(section, "nickname");
                     if (nick != null && !defined.ContainsKey(nick))
                         defined[nick] = kind;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks the goods the way common.dll reads them, in the order of freelancer.ini:
+        /// - hull is looked up among the goods read so far, and the game crashes if it isn't one of them.
+        /// - A commodity or equipment good without equipment crashes the game.
+        /// - good_buy_price, bad_buy_price, good_sell_price and bad_sell_price multiply the price read so far, so
+        ///   before price they are lost.
+        /// - The game warns about a commodity or equipment good whose nickname isn't its equipment, and about [GoodType].
+        /// </summary>
+        private static void CheckGoodReadOrder()
+        {
+            var defined = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string[] priceFactors = { "good_buy_price", "bad_buy_price", "good_sell_price", "bad_sell_price" };
+            foreach (string file in goodFiles)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                foreach (var section in ini.sections)
+                {
+                    if (section.sectionName.ToLower() == "goodtype")
+                    {
+                        Logger.WLog(string.Format("{0}:{1}: [GoodType] is obsolete. The game ignores it.", file, Util.GetSectionIdentifier(section)));
+                        continue;
+                    }
+                    if (section.sectionName.ToLower() != "good")
+                        continue;
+
+                    bool gotPrice = false;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key == "price")
+                            gotPrice = true;
+                        else if (!gotPrice && priceFactors.Contains(key))
+                            Logger.LogInvalidValue(file, setting, "Has to come after price! It multiplies the price, which is 0 before that.");
+                        else if (key == "hull" && !defined.Contains(setting.Str(0)))
+                            Logger.LogInvalidValue(file, setting, GoodExists(setting.Str(0))
+                                ? "Has to be defined before this good! The game crashes otherwise."
+                                : "Good doesn't exist! The game crashes.");
+                    }
+
+                    string nick = Util.TryGetStrSetting(section, "nickname");
+                    string category = Util.TryGetStrSetting(section, "category");
+                    string equipment = Util.TryGetStrSetting(section, "equipment");
+                    if (category != null && (category.ToLower() == "commodity" || category.ToLower() == "equipment"))
+                    {
+                        if (equipment == null)
+                            Logger.ELog(string.Format("{0}:{1}: The {2} good {3} has no equipment! The game crashes.", file,
+                                Util.GetSectionIdentifier(section), category.ToLower(), nick));
+                        else if (nick != null && !nick.Equals(equipment, StringComparison.OrdinalIgnoreCase))
+                            Logger.LogInvalidValue(file, section.GetSetting("equipment"), "Isn't the nickname of the good! The game warns about it.", LogLevel.warning);
+                    }
+                    if (nick != null)
+                        defined.Add(nick);
                 }
             }
         }
@@ -587,6 +646,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if (msg_id_prefix != null && !AudioChecks.VoiceMsgExists(msg_id_prefix))
                             Logger.LogInvalidValue(file, section.GetSetting("msg_id_prefix"), "Msg doesn't exist!");
 
+                        break;
+                    case "goodtype": // Obsolete, see CheckGoodReadOrder
                         break;
                     default:
                         Logger.WLog(string.Format("Unexpected section {0} in file {1}", section.sectionName, file));
