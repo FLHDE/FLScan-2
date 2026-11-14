@@ -18,8 +18,11 @@ namespace FLScanIE.Logging
     public static class Logger
     {
         private static readonly Queue<LogEntry> logs;
+        private static readonly object logsLock = new object();
         private static readonly Thread logThread;
-        private static bool abort;
+        private static volatile bool abort;
+        // Number of entries that were enqueued but haven't been handled yet (including the one being handled).
+        private static int pending;
         public static bool LoggedWarning { get; private set; }
         private static bool loggedError;
         private static bool loggedFatal;
@@ -46,7 +49,12 @@ namespace FLScanIE.Logging
             if(log == null)
                 throw new ArgumentNullException("log");
 
-            logs.Enqueue(log);
+            lock (logsLock)
+            {
+                logs.Enqueue(log);
+                pending++;
+                Monitor.PulseAll(logsLock);
+            }
 
             switch (log.Loglevel)
             {
@@ -308,7 +316,11 @@ namespace FLScanIE.Logging
         /// <param name="force">true if the shutdown sould be forced, otherwise false</param>
         public static void Abort(bool force)
         {
-            abort = true;
+            lock (logsLock)
+            {
+                abort = true;
+                Monitor.PulseAll(logsLock);
+            }
             if (force)
                 logThread.Abort();
         }
@@ -332,28 +344,49 @@ namespace FLScanIE.Logging
         {
             while (true)
             {
-                if (logs.Count == 0)
+                LogEntry log;
+                lock (logsLock)
                 {
-                    Thread.Sleep(100);
-
-                    if (abort && logs.Count == 0)
-                        return;
+                    while (logs.Count == 0)
+                    {
+                        if (abort)
+                            return;
+                        Monitor.Wait(logsLock);
+                    }
+                    log = logs.Dequeue();
                 }
-                else
+
+                try
                 {
-                    while (logs.Count != 0)
-                        OnHandleLog(logs?.Dequeue());
+                    OnHandleLog(log);
+                }
+                catch (Exception ex)
+                {
+                    // A failing log handler must not kill the logger thread (and with it the process).
+                    loggedFatal = true;
+                    try { Console.Error.WriteLine("Failed to write log entry: " + ex.Message); }
+                    catch { }
+                }
+                finally
+                {
+                    lock (logsLock)
+                    {
+                        pending--;
+                        Monitor.PulseAll(logsLock);
+                    }
                 }
             }
         }
 
+        /// <summary>
+        /// Blocks until every log entry logged so far has been handled.
+        /// </summary>
         public static void WaitForEnd()
         {
-            while (true)
+            lock (logsLock)
             {
-                if(logs.Count == 0)
-                    return;
-                Thread.Sleep(100);
+                while (pending > 0 && logThread.IsAlive)
+                    Monitor.Wait(logsLock, 100);
             }
         }
 

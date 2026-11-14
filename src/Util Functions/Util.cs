@@ -165,7 +165,14 @@ namespace FLScanIE.Util_Functions
         {
             var retn = new NickUtfTuple();
 
-            retn.Nick = section.GetSetting(nick).Str(0);
+            retn.Nick = TryGetStrSetting(section, nick);
+            if (retn.Nick == null)
+            {
+                // Callers skip sections without a nickname.
+                Logger.LogSettingNotFound(file, GetSectionIdentifier(section), section.sectionName, nick);
+                return retn;
+            }
+
             if (section.SettingExists(utf))
             {
                 string utfFile = Path.Combine(flDataPath, section.GetSetting(utf).Str(0));
@@ -199,10 +206,38 @@ namespace FLScanIE.Util_Functions
             return null;
         }
 
+        /// <summary>
+        /// Returns the first value of the setting, or null if the setting doesn't exist or has no value.
+        /// </summary>
         public static string TryGetStrSetting(FLDataFile.Section section, string name)
         {
             var setting = TryGetSetting(section, name);
-            return setting == null ? null : setting.Str(0);
+            return setting == null || setting.NumValues() == 0 ? null : setting.Str(0);
+        }
+
+        /// <summary>
+        /// Returns something that helps the user find a section in log messages: the line number of its first setting.
+        /// </summary>
+        public static string GetSectionIdentifier(FLDataFile.Section section)
+        {
+            return section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString();
+        }
+
+        /// <summary>
+        /// Adds a value to a dictionary. If the key already exists, a duplicate error is logged instead of throwing.
+        /// </summary>
+        public static void AddUnique<T>(Dictionary<string, T> dict, string key, T value, string file, FLDataFile.Section section, string what)
+        {
+            if (dict.ContainsKey(key))
+            {
+                var setting = TryGetSetting(section, "nickname");
+                if (setting != null)
+                    Logger.LogDublicateValue(file, setting, "Duplicate " + what + " nickname!");
+                else
+                    Logger.ELog(string.Format("{0}: Duplicate {1} nickname {2}", file, what, key));
+                return;
+            }
+            dict.Add(key, value);
         }
 
         public delegate void CheckDelegate();
@@ -276,12 +311,17 @@ namespace FLScanIE.Util_Functions
             return entries.ToArray();
         }
 
+        /// <summary>
+        /// Returns the lowercase shape names defined in a shape file, or null if they can't be determined
+        /// (the file is missing, or it's a vanilla file that isn't present).
+        /// </summary>
         public static string[] ParseShapeFile(string file, FLDataFile.Setting refSet, string refFile)
         {
-            if (!Checker.FileExists(file))
+            if (!Checker.FileExistsOnDisk(file))
             {
-                Logger.LogFileNotFound(refFile, refSet);
-                return new string[0];
+                if (!Checker.FileExists(file))
+                    Logger.LogFileNotFound(refFile, refSet);
+                return null;
             }
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
             List<string> values = new List<string>();

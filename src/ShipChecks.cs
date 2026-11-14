@@ -51,10 +51,15 @@ namespace FLScanIE
 
         private static void CheckShip(string file, FLDataFile.Section ship)
         {
-            string nick = ship.GetSetting("nickname").Str(0);
+            string nick = Util.TryGetStrSetting(ship, "nickname");
+            if (nick == null)
+                return; // Already reported while parsing
 
-            if (!shipTypes.Contains(ship.GetSetting("type").Str(0).ToLower()))
-                Logger.LogInvalidValue(file, ship.GetSetting("nickname"), "Ship type doesn't exist!");
+            string type = Util.TryGetStrSetting(ship, "type");
+            if (type == null)
+                Logger.LogSettingNotFound(file, nick, "Ship", "type");
+            else if (!shipTypes.Contains(type.ToLower()))
+                Logger.LogInvalidValue(file, ship.GetSetting("type"), "Ship type doesn't exist!");
 
             Util.CheckIDName(ship, "ids_name", nick, file);
             Util.CheckIDName(ship, "ids_info", nick, file);
@@ -89,9 +94,9 @@ namespace FLScanIE
             foreach (var surfaceEffect in surfaceEffects)
             {
                 Util.CheckNumberOfArgs(surfaceEffect, file, 4);
-                for (int i = 1; i <= 3; i++)
+                for (int i = 1; i < surfaceEffect.NumValues(); i++)
                     if (!FXChecks.EffectExists(surfaceEffect.Str(i)))
-                        Logger.LogInvalidValue(file, surfaceEffect, "Effect doesn't exist!");
+                        Logger.LogInvalidValue(file, surfaceEffect, "Effect doesn't exist!", surfaceEffect.Str(i));
             }
 
             if (ship.SettingExists("bay_doors_open_snd") && !AudioChecks.SoundExists(ship.GetSetting("bay_doors_open_snd").Str(0)))
@@ -160,11 +165,9 @@ namespace FLScanIE
             if (ship.SettingExists("cockpit"))
             {
                 string cockpit = ship.GetSetting("cockpit").Str(0);
-                if (Checker.FileExists(cockpit))
-                {
+                if (Checker.FileExistsOnDisk(cockpit))
                     CheckCockpitFile(cockpit);
-                }
-                else
+                else if (!Checker.FileExists(cockpit)) // Vanilla files that aren't present can't be checked
                     Logger.LogFileNotFound(file, ship.GetSetting("cockpit"));
             }
             //else
@@ -181,7 +184,7 @@ namespace FLScanIE
 
         private static void CheckCollGroup(string file, FLDataFile.Section collGrp)
         {
-            int firstLine = collGrp.settings[0].LineNumber;
+            string firstLine = Util.GetSectionIdentifier(collGrp);
 
             if (collGrp.SettingExists("explosion_arch"))
             {
@@ -218,14 +221,15 @@ namespace FLScanIE
             if (collGrp.SettingExists("dmg_obj"))
             {
                 string dmgObj = collGrp.GetSetting("dmg_obj").Str(0);
-                string dmgHp = collGrp.GetSetting("dmg_hp").Str(0);
+                string dmgHp = Util.TryGetStrSetting(collGrp, "dmg_hp");
 
-                if (!simpleNicknames.Contains(dmgObj))
+                if (!simpleNicknames.Contains(dmgObj.ToLower()))
                     Logger.LogInvalidValue(file, collGrp.GetSetting("dmg_obj"), "Simple doesn't exist!");
 
-                if (!Checker.DisableUTF)
+                UtfFile dmgUtf;
+                if (dmgHp != null && !Checker.DisableUTF && simpleUTF.TryGetValue(dmgObj, out dmgUtf))
                 {
-                    if (!simpleUTF[dmgObj].HardpointExists(dmgHp))
+                    if (!dmgUtf.HardpointExists(dmgHp))
                         Logger.LogHardpoint(file, collGrp.GetSetting("dmg_hp"));
                 }
             }
@@ -245,14 +249,20 @@ namespace FLScanIE
                     Logger.LogFileNotFound(file, simple.GetSetting("material_library"));
             }
             else
-                Logger.LogSettingNotFound(file, simple.settings[0].LineNumber, "Simple", "material_library");
+                Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(simple), "Simple", "material_library");
         }
 
         private static void CheckCockpitFile(string file)
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
-            FLDataFile.Section CockpitSection = ini.sections.First(s => s.sectionName == "Cockpit");
-            FLDataFile.Section TurretCameraSection = ini.sections.FirstOrDefault(s => s.sectionName == "TurretCamera");
+            FLDataFile.Section CockpitSection = ini.sections.FirstOrDefault(s => s.sectionName.ToLower() == "cockpit");
+            FLDataFile.Section TurretCameraSection = ini.sections.FirstOrDefault(s => s.sectionName.ToLower() == "turretcamera");
+
+            if (CockpitSection == null)
+            {
+                Logger.ELog(file + ": [Cockpit] section not found!");
+                return;
+            }
 
             if(CockpitSection.SettingExists("mesh"))
             {
@@ -290,6 +300,13 @@ namespace FLScanIE
                     {
                         case "Ship":
                             retn = Util.ParseNickUTF(Checker.flDataPath, shipFile, section);
+                            if (retn.Nick == null)
+                                break;
+                            if (shipNicknames.Contains(retn.Nick, StringComparer.OrdinalIgnoreCase))
+                            {
+                                Logger.LogDublicateValue(shipFile, section.GetSetting("nickname"), "Duplicate ship nickname!");
+                                break;
+                            }
                             shipNicknames.Add(retn.Nick);
                             if (retn.UtfFile != null)
                                 shipUTF.Add(retn.Nick, retn.UtfFile);
@@ -303,9 +320,11 @@ namespace FLScanIE
                             break;
                         case "Simple":
                             retn = Util.ParseNickUTF(Checker.flDataPath, shipFile, section);
+                            if (retn.Nick == null)
+                                break;
                             simpleNicknames.Add(retn.Nick);
                             if (retn.UtfFile != null)
-                                simpleUTF.Add(retn.Nick, retn.UtfFile);
+                                Util.AddUnique(simpleUTF, retn.Nick, retn.UtfFile, shipFile, section, "simple");
                             break;
                     }
                 }

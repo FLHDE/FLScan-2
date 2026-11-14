@@ -62,7 +62,12 @@ namespace FLScanIE
                                     Logger.ELog("Could not parse utf file! " + ex.Message + ", referenced at: " + setting.desc + ", utf-file: " + utfFile);
                                 }
                                 if (utf != null)
-                                    petalUTF[key].Add(nick, utf);
+                                {
+                                    if (petalUTF[key].ContainsKey(nick))
+                                        Logger.LogDublicateValue(pentalDBfile, setting, "Duplicate " + key + " nickname!");
+                                    else
+                                        petalUTF[key].Add(nick, utf);
+                                }
                             }
                         }
                         else if (!Checker.HasVanillaFile(setting.Str(1)))

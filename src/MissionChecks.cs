@@ -64,18 +64,43 @@ namespace FLScanIE
         static Dictionary<string, FACTIONPROPS> factionprops = new Dictionary<string, FACTIONPROPS>();
         static Dictionary<string, ZONE> zones = new Dictionary<string, ZONE>();
 
+        /// <summary>
+        /// Loads an ini file (relative to DATA). Returns null if it doesn't exist, logging an error unless it is a
+        /// vanilla file that's assumed to exist (those can't be checked).
+        /// </summary>
+        static FLDataFile LoadIni(string relPath)
+        {
+            if (Checker.FileExistsOnDisk(relPath))
+                return new FLDataFile(Path.Combine(Checker.flDataPath, relPath), true);
+            if (!Checker.FileExists(relPath))
+                Logger.ELog("File not found: " + relPath);
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the lowercase nickname of a section, or logs an error and returns null if there's none.
+        /// </summary>
+        static string GetNickname(FLDataFile.Section sec, string fileName)
+        {
+            string nick = Util.TryGetStrSetting(sec, "nickname");
+            if (nick == null)
+                Logger.LogSettingNotFound(fileName, Util.GetSectionIdentifier(sec), sec.sectionName, "nickname");
+            return nick == null ? null : nick.ToLowerInvariant();
+        }
+
         static void LoadFormations()
         {
             Logger.ILog("Loading formations.ini");
-            string fileName = Checker.flDataPath + "\\MISSIONS\\formations.ini";
-            FLDataFile file = new FLDataFile(fileName, true);
+            string fileName = "MISSIONS\\formations.ini";
+            FLDataFile file = LoadIni(fileName);
+            if (file == null)
+                return;
             foreach (FLDataFile.Section sec in file.sections)
             {
-                if (!sec.SettingExists("nickname"))
-                    Logger.LogSettingNotFound(fileName, sec.settings[0].LineNumber, sec.sectionName, "nickname");
-
                 FORMATION o = new FORMATION();
-                o.nickname = sec.GetSetting("nickname").Str(0).ToLowerInvariant();
+                o.nickname = GetNickname(sec, fileName);
+                if (o.nickname == null)
+                    continue;
                 formations[o.nickname] = o;
             }
         }
@@ -83,19 +108,20 @@ namespace FLScanIE
         static void LoadShipClasses()
         {
             Logger.ILog("Loading shipclasses.ini");
-            string fileName = Checker.flDataPath + "\\MISSIONS\\shipclasses.ini";
-            FLDataFile file = new FLDataFile(fileName, true);
+            string fileName = "MISSIONS\\shipclasses.ini";
+            FLDataFile file = LoadIni(fileName);
+            if (file == null)
+                return;
             foreach (FLDataFile.Section sec in file.sections)
             {
-                if (!sec.SettingExists("nickname"))
-                    Logger.LogSettingNotFound(fileName, sec.settings[0].LineNumber, sec.sectionName, "nickname");
-
                 SHIPCLASS o = new SHIPCLASS();
-                o.nickname = sec.GetSetting("nickname").Str(0).ToLowerInvariant();
-                
+                o.nickname = GetNickname(sec, fileName);
+                if (o.nickname == null)
+                    continue;
+
                 foreach (FLDataFile.Setting set in sec.settings)
                 {
-                    if (set.settingName == "member")
+                    if (set.settingName == "member" && set.NumValues() > 0)
                     {
                         string member = set.Str(0).ToLowerInvariant();
                         o.members.Add(member);
@@ -144,33 +170,42 @@ namespace FLScanIE
         
         static void CheckNPCShips(string npcShipPath, bool isMission)
         {
+            FLDataFile file = LoadIni(npcShipPath);
+            if (file == null)
+                return;
             Logger.ILog("Checking " + npcShipPath);
 
-            FLDataFile file = new FLDataFile(npcShipPath, true);
             foreach (FLDataFile.Section sec in file.sections)
             {
                 if (sec.sectionName != "NPCShipArch")
-                    Logger.WLog("Illegal section at line " + sec.settings[0].LineNumber);
-
-                if (!sec.SettingExists("nickname"))
-                    Logger.LogSettingNotFound(npcShipPath, sec.settings[0].LineNumber, sec.sectionName, "nickname");
+                    Logger.WLog(npcShipPath + ": Illegal section at line " + Util.GetSectionIdentifier(sec));
 
                 NPCSHIPARCH o = new NPCSHIPARCH();
-                o.nickname = sec.GetSetting("nickname").Str(0).ToLowerInvariant();
+                o.nickname = GetNickname(sec, npcShipPath);
+                if (o.nickname == null)
+                    continue;
 
                 foreach (FLDataFile.Setting set in sec.settings)
                 {
+                    if (set.NumValues() == 0)
+                        continue;
+
                     if (set.settingName == "level")
                     {
                         uint level;
-                        string tlevel = set.Str(0);
-                        if (!uint.TryParse(tlevel.Substring(1), out level))
+                        if (!TryParseLevel(set.Str(0), out level))
                             Logger.LogInvalidValue(npcShipPath, set, "Invalid level!");
 
                         o.level = level;
                     }
                     else if (set.settingName == "npc_class")
                     {
+                        if (set.NumValues() < 2)
+                        {
+                            Logger.LogArgCount(npcShipPath, set, 2);
+                            continue;
+                        }
+
                         string legality = set.Str(0).ToLowerInvariant();
                         if (!ShipClassMemberExists(legality))
                             Logger.LogInvalidValue(npcShipPath, set, "Invalid legality member!");
@@ -186,10 +221,13 @@ namespace FLScanIE
                         {
                             uint level;
                             string tlevel = set.Str(i);
-                            if (!uint.TryParse(tlevel.Substring(1), out level))
+                            if (!TryParseLevel(tlevel, out level))
+                            {
                                 Logger.LogInvalidValue(npcShipPath, set, "Invalid level!", tlevel);
+                                continue;
+                            }
 
-                            if (!ShipClassMemberExists(tlevel))
+                            if (!ShipClassMemberExists(tlevel.ToLowerInvariant()))
                                 Logger.LogInvalidValue(npcShipPath, set, "Invalid shipclass member!", tlevel);
 
                             o.levels[level] = true;
@@ -207,41 +245,50 @@ namespace FLScanIE
             }
         }
 
+        /// <summary>
+        /// Parses a level like "d5" into 5.
+        /// </summary>
+        static bool TryParseLevel(string str, out uint level)
+        {
+            level = 0;
+            return str.Length > 1 && (str[0] == 'd' || str[0] == 'D') && uint.TryParse(str.Substring(1), out level);
+        }
+
         static void LoadNPCShips()
         {
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\npcships.ini", false);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M01a\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M01b\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M02\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M03\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M04\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M05\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M06\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M07\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M08\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M09\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M10\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M11\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M12\\npcships.ini", true);
-            CheckNPCShips(Checker.flDataPath + "\\MISSIONS\\M13\\npcships.ini", true);
+            CheckNPCShips("MISSIONS\\npcships.ini", false);
+            foreach (var mission in new[] { "M01a", "M01b", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13" })
+                CheckNPCShips("MISSIONS\\" + mission + "\\npcships.ini", true);
         }
 
         static void LoadFactionProps()
         {
             Logger.ILog("Checking faction_prop.ini");
-            string fileName = Checker.flDataPath + "\\MISSIONS\\faction_prop.ini";
-            FLDataFile file = new FLDataFile(fileName, true);
+            string fileName = "MISSIONS\\faction_prop.ini";
+            FLDataFile file = LoadIni(fileName);
+            if (file == null)
+                return;
             foreach (FLDataFile.Section sec in file.sections)
             {
                 if (sec.sectionName != "FactionProps")
-                    Logger.WLog("Illegal section at line " + sec.settings[0].LineNumber);
+                    Logger.WLog(fileName + ": Illegal section at line " + Util.GetSectionIdentifier(sec));
+
+                string affiliation = Util.TryGetStrSetting(sec, "affiliation");
+                if (affiliation == null)
+                {
+                    Logger.LogSettingNotFound(fileName, Util.GetSectionIdentifier(sec), sec.sectionName, "affiliation");
+                    continue;
+                }
 
                 FACTIONPROPS o = new FACTIONPROPS();
-                o.affiliation = sec.GetSetting("affiliation").Str(0).ToLowerInvariant();
+                o.affiliation = affiliation.ToLowerInvariant();
                 o.desc = sec.settings[0].desc;
-                
+
                 foreach (FLDataFile.Setting set in sec.settings)
                 {
+                    if (set.NumValues() == 0)
+                        continue;
+
                     if (set.settingName == "formation" && Util.CheckNumberOfArgs(set, fileName, 2))
                     {
                         string formation_by_class = set.Str(0).ToLowerInvariant();
@@ -269,20 +316,35 @@ namespace FLScanIE
 
         static void LoadSystem(string systemPath)
         {
-            string fileName = Checker.flDataPath + "\\UNIVERSE\\" + systemPath;
-            FLDataFile file = new FLDataFile(fileName, true);
-            
+            string fileName = "UNIVERSE\\" + systemPath;
+            // Missing system files are reported by UniverseChecks
+            if (!Checker.FileExistsOnDisk(fileName))
+                return;
+            FLDataFile file = new FLDataFile(Path.Combine(Checker.flDataPath, fileName), true);
+
+            // All defined encounters, and the paths of the encounter files that can be checked
+            HashSet<string> encounterNicks = new HashSet<string>();
             Dictionary<string, string> encounterFiles = new Dictionary<string, string>();
             foreach (FLDataFile.Section sec in file.sections)
             {
                 if (sec.sectionName == "EncounterParameters")
                 {
-                    string nickname = sec.GetSetting("nickname").Str(0).ToLowerInvariant();
-                    string filename = Checker.flDataPath + "\\" + sec.GetSetting("filename").Str(0).ToLowerInvariant();
-                    if (!File.Exists(filename))
+                    // Missing nicknames are reported by UniverseChecks
+                    string nickname = Util.TryGetStrSetting(sec, "nickname");
+                    string relEncounterFile = Util.TryGetStrSetting(sec, "filename");
+                    if (nickname == null)
+                        continue;
+                    encounterNicks.Add(nickname.ToLowerInvariant());
+                    if (relEncounterFile == null)
+                    {
+                        Logger.LogSettingNotFound(fileName, nickname, sec.sectionName, "filename");
+                        continue;
+                    }
+
+                    if (Checker.FileExistsOnDisk(relEncounterFile))
+                        encounterFiles[nickname.ToLowerInvariant()] = Path.Combine(Checker.flDataPath, relEncounterFile);
+                    else if (!Checker.FileExists(relEncounterFile)) // Vanilla files that aren't present can't be checked
                         Logger.LogFileNotFound(fileName, sec.GetSetting("filename"));
-                    else
-                        encounterFiles[nickname] = filename;
                 }
             }
 
@@ -297,6 +359,9 @@ namespace FLScanIE
                     Dictionary<string, SYSTEM_ENCOUNTER> encounters = new Dictionary<string, SYSTEM_ENCOUNTER>();
                     foreach (FLDataFile.Setting set in sec.settings)
                     {
+                        if (set.NumValues() == 0)
+                            continue;
+
                         if (set.settingName.ToLowerInvariant() == "path_label")
                         {
                             string path_label = set.Str(0).ToLowerInvariant();
@@ -311,7 +376,12 @@ namespace FLScanIE
 
                             for (int i = 1; i < set.NumValues(); i++)
                             {
-                                uint path_index = (uint)set.Int32(i);
+                                uint path_index;
+                                if (!uint.TryParse(set.Str(i), out path_index))
+                                {
+                                    Logger.LogInvalidValue(fileName, set, "Has to be a non-negative integer!", set.Str(i));
+                                    continue;
+                                }
                                 if (path_labels[path_label].indices.Contains(path_index))
                                     Logger.LogDublicateValue(fileName, set, "Duplicate index!");
                                 path_labels[path_label].indices.Add(path_index);
@@ -328,7 +398,7 @@ namespace FLScanIE
                         else if (set.settingName.ToLowerInvariant() == "encounter")
                         {
                             encounter = set.Str(0).ToLowerInvariant();
-                            if (!encounterFiles.ContainsKey(encounter))
+                            if (!encounterNicks.Contains(encounter))
                                 Logger.LogInvalidValue(fileName, set, "Encounter not found!");
 
                             if (encounters.ContainsKey(encounter))
@@ -336,20 +406,23 @@ namespace FLScanIE
 
                             encounters[encounter] = new SYSTEM_ENCOUNTER();
                             encounters[encounter].name = encounter;
-                            string str_level = set.Str(1);
-                            if(!uint.TryParse(str_level, out encounters[encounter].level))
-                                Logger.LogInvalidValue(fileName, set, "Has to be an integer!", str_level);
                             encounters[encounter].desc = set.desc;
+                            if (set.NumValues() < 2)
+                                Logger.LogArgCount(fileName, set, 3);
+                            else if (!uint.TryParse(set.Str(1), out encounters[encounter].level))
+                                Logger.LogInvalidValue(fileName, set, "Has to be an integer!", set.Str(1));
                         }
                         else if (set.settingName.ToLowerInvariant() == "faction")
                         {
                             string faction = set.Str(0).ToLowerInvariant();
                             if (!factionprops.ContainsKey(faction))
                                 Logger.LogInvalidValue(fileName, set, "Faction not found!");
-                            if (!encounterFiles.ContainsKey(encounter))
-                                Logger.LogInvalidValue(fileName, set, "Encounter not found!");
 
-                            encounters[encounter].factions.Add(faction);
+                            // A faction belongs to the encounter defined before it
+                            if (!encounters.ContainsKey(encounter))
+                                Logger.LogInvalidValue(fileName, set, "Faction isn't preceded by an encounter!");
+                            else
+                                encounters[encounter].factions.Add(faction);
                         }
                     }
 
@@ -448,7 +521,10 @@ namespace FLScanIE
                 {
                     foreach (FLDataFile.Setting set in sec.settings)
                     {
-                        // Check that ship_by_class parameter references a valid [ShipClass] 
+                        if (set.NumValues() == 0)
+                            continue;
+
+                        // Check that ship_by_class parameter references a valid [ShipClass]
                         // (not member of shipclass).
                         // Check [Encounter] reference [ShipClass] via the ship_class parameter
                         // Check [FactionProps] reference [NPCShipArch] via the npc_ship parameter
@@ -456,6 +532,9 @@ namespace FLScanIE
                         // Check The npc_class must be a member of the [ShipClass]           
                         if (set.settingName == "ship_by_class")
                         {
+                            if (!Util.CheckNumberOfArgs(set, encounterFile, 3, 4))
+                                continue;
+
                             // Check that the ship class exists
                             string ship_class = set.Str(2).ToLowerInvariant();
                             if (!shipclasses.ContainsKey(ship_class))
@@ -503,12 +582,17 @@ namespace FLScanIE
 
         static void LoadUniverse()
         {
-            FLDataFile file = new FLDataFile(Checker.flDataPath + "\\UNIVERSE\\universe.ini", true);
+            FLDataFile file = LoadIni("UNIVERSE\\universe.ini");
+            if (file == null)
+                return;
             foreach (FLDataFile.Section sec in file.sections)
             {
                 if (sec.sectionName == "system")
                 {
-                    LoadSystem(sec.GetSetting("file").Str(0));
+                    // Missing settings are reported by UniverseChecks
+                    string systemFile = Util.TryGetStrSetting(sec, "file");
+                    if (systemFile != null)
+                        LoadSystem(systemFile);
                 }
             }
         }

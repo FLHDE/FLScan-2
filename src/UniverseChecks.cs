@@ -41,25 +41,39 @@ namespace FLScanIE
 
             var rooms = ini.sections.Where(s => s.sectionName.ToLower() == "room").ToArray();
             FLDataFile.Section baseInfo = ini.sections.FirstOrDefault(s => s.sectionName.ToLower() == "baseinfo");
-            string nick = baseInfo.GetSetting("nickname").Str(0);
 
-            var roomNicks = rooms.Select(r => r.GetSetting("nickname").Str(0).ToLower()).ToArray();
+            var roomNicks = new List<string>();
+            foreach (var room in rooms)
+            {
+                string roomNick = Util.TryGetStrSetting(room, "nickname");
+                if (roomNick == null)
+                    Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(room), "Room", "nickname");
+                else
+                    roomNicks.Add(roomNick.ToLower());
+            }
+            var roomNickArray = roomNicks.ToArray();
 
-            string startRoom = Util.TryGetStrSetting(baseInfo, "start_room");
-            if (startRoom == null)
-                Logger.LogSettingNotFound(file, nick ?? baseInfo.settings[0].LineNumber.ToString(), "BaseInfo", "start_room");
-            else if (!roomNicks.Contains(startRoom.ToLower()))
-                Logger.LogInvalidValue(file, baseInfo.GetSetting("start_room"), "Room doesn't exist!");
+            if (baseInfo == null)
+                Logger.ELog(file + ": [BaseInfo] section not found!");
+            else
+            {
+                string nick = Util.TryGetStrSetting(baseInfo, "nickname");
+                string startRoom = Util.TryGetStrSetting(baseInfo, "start_room");
+                if (startRoom == null)
+                    Logger.LogSettingNotFound(file, nick ?? Util.GetSectionIdentifier(baseInfo), "BaseInfo", "start_room");
+                else if (!roomNickArray.Contains(startRoom.ToLower()))
+                    Logger.LogInvalidValue(file, baseInfo.GetSetting("start_room"), "Room doesn't exist!");
+            }
 
             foreach (var room in rooms)
             {
                 string roomFile = Util.TryGetStrSetting(room, "file");
                 if(roomFile == null)
-                    Logger.LogSettingNotFound(file, room.settings[0].LineNumber, "Room", "file");
-                else if (!Checker.FileExists(roomFile))
+                    Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(room), "Room", "file");
+                else if (Checker.FileExistsOnDisk(roomFile))
+                    CheckRoomFile(roomFile, ref roomNickArray);
+                else if (!Checker.FileExists(roomFile)) // Vanilla files that aren't present can't be checked
                     Logger.LogFileNotFound(file, room.GetSetting("file"));
-                else
-                    CheckRoomFile(roomFile, ref roomNicks);
             }
         }
 
@@ -138,6 +152,8 @@ namespace FLScanIE
 
             foreach (var setting in section.settings)
             {
+                if (setting.NumValues() == 0)
+                    continue;
                 string val = setting.Str(0);
 
                 switch (setting.settingName.ToLower())
@@ -168,21 +184,27 @@ namespace FLScanIE
 
         private static void CheckSystemEntry(string file, FLDataFile.Section section)
         {
-            string nick = Util.TryGetStrSetting(section, "nickname").ToLower();
+            string nick = Util.TryGetStrSetting(section, "nickname");
+            if (nick == null)
+                return; // Already reported while parsing
+            nick = nick.ToLower();
             Util.CheckIDInfo(section, "ids_info", nick, file);
             Util.CheckIDName(section, "strid_name", nick, file);
 
             foreach (var setting in section.settings)
             {
+                if (setting.NumValues() == 0)
+                    continue;
                 string val = setting.Str(0);
 
                 switch (setting.settingName.ToLower())
                 {
                     case "file":
-                        if (!File.Exists(Path.Combine(Path.Combine(Checker.flDataPath, "universe"), val)))
-                            Logger.LogFileNotFound(file, setting);
-                        else
+                        string relSystemFile = Path.Combine("universe", val);
+                        if (Checker.FileExistsOnDisk(relSystemFile))
                             CheckSystemFile(nick, val);
+                        else if (!Checker.FileExists(relSystemFile)) // Vanilla files that aren't present can't be checked
+                            Logger.LogFileNotFound(file, setting);
                         break;
                     case "pos":
                         Util.CheckNumberOfArgs(setting, file, 2);
@@ -221,10 +243,10 @@ namespace FLScanIE
                         string neb_zone = Util.TryGetStrSetting(section, "zone");
 
                         if (neb_file != null)
-                            CheckNebulaFile(neb_file, sysnick);
+                            CheckNebulaFile(neb_file, sysnick, file, section.GetSetting("file"));
                         else
                             Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Nebula", "file");
-                        if (neb_zone != null && !objectNicks[sysnick]["zone"].Contains(neb_zone.ToLower()))
+                        if (neb_zone != null && !ZoneExists(sysnick, neb_zone))
                             Logger.LogInvalidValue(file, section.GetSetting("zone"), "Zone doesn't exist!");
                         break;
                     case "zone":
@@ -234,6 +256,8 @@ namespace FLScanIE
 
                         foreach (var setting in section.settings)
                         {
+                            if (setting.NumValues() == 0)
+                                continue;
                             val = setting.Str(0);
 
                             switch (setting.settingName.ToLower())
@@ -279,7 +303,7 @@ namespace FLScanIE
                                         Logger.LogInvalidValue(file, setting, "Invalid mission_type!");
                                     break;
                                 case "encounter":
-                                    if (!objectNicks[sysnick]["encounterparameters"].Contains(val.ToLower()))
+                                    if (!ThingExistsInSystem(sysnick, val, "encounterparameters"))
                                         Logger.LogInvalidValue(file, setting, "Encounter doesn't exist!");
                                     break;
                             }
@@ -297,16 +321,14 @@ namespace FLScanIE
                             Logger.LogInvalidValue(file, section.GetSetting("name"), "Invalid line in file.");
                         if (rpopd != null)
                             if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true")
-                                Logger.LogInvalidValue(file, section.GetSetting("rpopd"), "Must be true or false.");
+                                Logger.LogInvalidValue(file, section.GetSetting("rpop_solar_detection"), "Must be true or false.");
                         if (farclip != null)
                         {
-                            float farclip_float = float.Parse(farclip);
-                            if (farclip_float < 1000)
-                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Must be at least 1000.");
-                            else if (farclip_float > 999)
-                                break;
-                            else
-                                Logger.LogInvalidValue(file, section.GetSetting("farclip"), "Invalid data type, expected numeric value.");
+                            float farclip_float;
+                            if (!float.TryParse(farclip, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out farclip_float))
+                                Logger.LogInvalidValue(file, section.GetSetting("space_farclip"), "Invalid data type, expected numeric value.");
+                            else if (farclip_float < 1000)
+                                Logger.LogInvalidValue(file, section.GetSetting("space_farclip"), "Must be at least 1000.");
                         }
                         break;
                     case "texturepanels":
@@ -339,7 +361,7 @@ namespace FLScanIE
                         string ast_zone = Util.TryGetStrSetting(section, "zone");
 
                         if (ast_file != null)
-                            CheckAsteroidFile(ast_file, sysnick);
+                            CheckAsteroidFile(ast_file, sysnick, file, section.GetSetting("file"));
                         else
                             Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Asteroids", "file");
 
@@ -366,7 +388,7 @@ namespace FLScanIE
 
                         if (music_danger != null)
                         {
-                            if (!AudioChecks.SoundExists(music_battle))
+                            if (!AudioChecks.SoundExists(music_danger))
                                 Logger.LogInvalidValue(file, section.GetSetting("danger"), "Sound doesn't exist!");
                         }
                         else
@@ -498,9 +520,9 @@ namespace FLScanIE
                                 case "tradelane_space_name":
                                     uint ids;
                                     if (!uint.TryParse(val, out ids))
-                                        Logger.LogInvalidValue(file, section.GetSetting("ids_info"), "Has to be a number!");
+                                        Logger.LogInvalidValue(file, setting, "Has to be a number!");
                                     else if (!Infocards.IsName(ids))
-                                        Logger.LogIDError(file, section.GetSetting("ids_info"));
+                                        Logger.LogIDError(file, setting);
                                     break;
                                 case "star":
                                     if (!SolarChecks.StarExists(val))
@@ -533,10 +555,7 @@ namespace FLScanIE
                                         break;
                                     string ring_zone = setting.Str(0);
                                     string ring_file = setting.Str(1);
-                                    if (Checker.FileExists(ring_file))
-                                        CheckRingFile(ring_file, sysnick);
-                                    else
-                                        Logger.LogFileNotFound(file, setting, ring_file);
+                                    CheckRingFile(ring_file, sysnick, file, setting);
                                     if(!ZoneExists(sysnick, ring_zone))
                                         Logger.LogInvalidValue(file, setting, "Zone doesn't exist!", ring_zone);
                                     break;
@@ -605,9 +624,24 @@ namespace FLScanIE
             }
         }
 
-        private static void CheckNebulaFile(string file, string sys)
+        /// <summary>
+        /// Loads an ini file (relative to DATA) referenced by <paramref name="refSetting"/> in <paramref name="refFile"/>.
+        /// Logs a missing file and returns null if it doesn't exist or is a vanilla file that isn't present.
+        /// </summary>
+        private static FLDataFile LoadReferencedIni(string file, string refFile, FLDataFile.Setting refSetting)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            if (Checker.FileExistsOnDisk(file))
+                return new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            if (!Checker.FileExists(file))
+                Logger.LogFileNotFound(refFile, refSetting, file);
+            return null;
+        }
+
+        private static void CheckNebulaFile(string file, string sys, string refFile, FLDataFile.Setting refSetting)
+        {
+            FLDataFile ini = LoadReferencedIni(file, refFile, refSetting);
+            if (ini == null)
+                return;
             string[] shapes = new string[0];
             if (ini.SettingExists("TexturePanels", "file"))
             {
@@ -623,7 +657,7 @@ namespace FLScanIE
             // TODO
         }
 
-        private static void CheckAsteroidFile(string file, string sys)
+        private static void CheckAsteroidFile(string file, string sys, string refFile, FLDataFile.Setting refSetting)
         {
 /* TODO
 [TexturePanels]
@@ -638,7 +672,9 @@ asteroid = mine_spike_minedout
 [LootableZone]
 asteroid_loot_container = lootcrate_ast_loot_gold
 asteroid_loot_commodity = commodity_gold*/
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            FLDataFile ini = LoadReferencedIni(file, refFile, refSetting);
+            if (ini == null)
+                return;
             string[] shapes = new string[0];
             if (ini.SettingExists("TexturePanels", "file"))
             {
@@ -649,10 +685,12 @@ asteroid_loot_commodity = commodity_gold*/
             CheckFieldFile(ini, shapes, file, sys);
         }
 
-        private static void CheckRingFile(string file, string sys)
+        private static void CheckRingFile(string file, string sys, string refFile, FLDataFile.Setting refSetting)
         {
             // TODO
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            FLDataFile ini = LoadReferencedIni(file, refFile, refSetting);
+            if (ini == null)
+                return;
             string[] shapes = new string[0];
             if (ini.SettingExists("TexturePanels", "file"))
             {
@@ -661,6 +699,15 @@ asteroid_loot_commodity = commodity_gold*/
             }
 
             CheckFieldFile(ini, shapes, file, sys);
+        }
+
+        /// <summary>
+        /// True if <paramref name="shape"/> is set but not defined. <paramref name="shapes"/> is null if the
+        /// defined shapes are unknown, in which case nothing is reported.
+        /// </summary>
+        private static bool ShapeMissing(string[] shapes, string shape)
+        {
+            return shape != null && shapes != null && !shapes.Contains(shape.ToLower());
         }
 
         private static void CheckFieldFile(FLDataFile ini, string[] shapes, string file, string sys)
@@ -690,16 +737,16 @@ asteroid_loot_commodity = commodity_gold*/
                         string ext_shape = Util.TryGetStrSetting(sec, "shape");
                         string ext_fillshape = Util.TryGetStrSetting(sec, "fill_shape");
                         string ext_detshape = Util.TryGetStrSetting(sec, "detail_shape");
-                        if (ext_shape != null && !shapes.Contains(ext_shape.ToLower()))
+                        if (ShapeMissing(shapes, ext_shape))
                             Logger.LogInvalidValue(file, sec.GetSetting("shape"), "Shape not found!");
-                        if (ext_fillshape != null && !shapes.Contains(ext_fillshape.ToLower()))
+                        if (ShapeMissing(shapes, ext_fillshape))
                             Logger.LogInvalidValue(file, sec.GetSetting("fill_shape"), "Shape not found!");
-                        if (ext_detshape != null && !shapes.Contains(ext_detshape.ToLower()))
+                        if (ShapeMissing(shapes, ext_detshape))
                             Logger.LogInvalidValue(file, sec.GetSetting("detail_shape"), "Shape not found!");
                         break;
                     case "clouds":
                         string cl_shape = Util.TryGetStrSetting(sec, "puff_shape");
-                        if (cl_shape != null && !shapes.Contains(cl_shape.ToLower()))
+                        if (ShapeMissing(shapes, cl_shape))
                             Logger.LogInvalidValue(file, sec.GetSetting("puff_shape"), "Shape not found!");
                         break;
                 }
@@ -757,12 +804,19 @@ asteroid_loot_commodity = commodity_gold*/
                             baseNicks[sys] = new List<string>();
                         baseNicks[sys].Add(nick.ToLower());
 
+                        if (bfile == null)
+                        {
+                            Logger.LogSettingNotFound(file, nick, "Base", "file");
+                            break;
+                        }
                         if (!Checker.FileExists(bfile))
                         {
                             Logger.LogFileNotFound(file, section.GetSetting("file"));
                             break;
                         }
-                        baseFiles.Add(nick, bfile);
+                        if (!Checker.FileExistsOnDisk(bfile))
+                            break; // Vanilla files that aren't present can't be checked
+                        Util.AddUnique(baseFiles, nick.ToLower(), bfile, file, section, "base");
                         break;
                     case "system":
                         nick = Util.TryGetStrSetting(section, "nickname");
@@ -791,6 +845,9 @@ asteroid_loot_commodity = commodity_gold*/
 
         private static void ParseSystemFile(string file, string system, ref Dictionary<string, Dictionary<string, List<string>>> objectNicks)
         {
+            // Missing files are reported by CheckSystemEntry
+            if (!Checker.FileExistsOnDisk(Path.Combine("universe", file)))
+                return;
             FLDataFile ini = new FLDataFile(Path.Combine(Path.Combine(Checker.flDataPath, "universe"), file), true);
 
             foreach (var section in ini.sections)
@@ -802,9 +859,15 @@ asteroid_loot_commodity = commodity_gold*/
                     case "lightsource":
                     case "object":
                     case "zone":
+                        string nick = Util.TryGetStrSetting(section, "nickname");
+                        if (nick == null)
+                        {
+                            Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), section.sectionName, "nickname");
+                            break;
+                        }
                         if (!objectNicks[system].ContainsKey(section.sectionName))
                             objectNicks[system][section.sectionName] = new List<string>();
-                        objectNicks[system][section.sectionName].Add(section.GetSetting("nickname").Str(0).ToLower());
+                        objectNicks[system][section.sectionName].Add(nick.ToLower());
                         break;
 
                     case "field":
@@ -842,9 +905,12 @@ asteroid_loot_commodity = commodity_gold*/
 
         public static bool ThingExistsInSystem(string sys, string nick, string name)
         {
-            nick = nick.ToLower();
-            sys = sys.ToLower();
-            return objectNicks[sys][name].Contains(nick);
+            Dictionary<string, string[]> things;
+            string[] nicks;
+            // Systems without e.g. any zone don't have an entry for that type at all.
+            return objectNicks.TryGetValue(sys.ToLower(), out things)
+                && things.TryGetValue(name, out nicks)
+                && nicks.Contains(nick.ToLower());
         }
 
         public static bool BaseExists(string nick)

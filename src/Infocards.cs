@@ -135,7 +135,8 @@ namespace FLScanIE
                     int iIDS = (iDLL * 0x10000) + resId;
 
                     byte[] bufName = new byte[0x10000];
-                    int len = LoadStringW(hInstance, resId, bufName, bufName.Length);
+                    // nBufferMax is in characters, not bytes
+                    int len = LoadStringW(hInstance, resId, bufName, bufName.Length / 2);
                     if (len > 0)
                     {
                         if (infocards.ContainsKey(iIDS))
@@ -154,7 +155,8 @@ namespace FLScanIE
                         if (resContent != IntPtr.Zero)
                         {
                             int size = SizeofResource(hInstance, hFindRes);
-                            byte[] bufInfo = new byte[size];
+                            // 4 spare bytes so the "missing L" and "missing >" fixes below can append characters
+                            byte[] bufInfo = new byte[size + 4];
                             Marshal.Copy(resContent, bufInfo, 0, (int)size);
 
                             int start = 0;
