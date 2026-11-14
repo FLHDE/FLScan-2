@@ -12,7 +12,6 @@ namespace FLScanIE
     public static class EquipmentChecks
     {
         /*
-TODO: commodities_per_faction.ini, depends on a new MissionChecks.cs
 TODO: check if [Muniton] hp_trail_parent exists in [Gun] DA_archetype
 TODO: check if [Muniton] weapon_type equals [Gun] weapon_type
 TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't referenced in freelancer.ini
@@ -48,7 +47,34 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             Util.RunChecks(CheckGoodFile, goodFiles);
             Util.RunChecks(CheckMarketFile, marketFiles);
             Util.RunChecks(CheckWeaponModFile, weaponModFiles);
+            // commodities_per_faction.ini isn't referenced by freelancer.ini, but it's always loaded by the game
+            Util.RunChecks(CheckFactionGoodFile, new[] { @"EQUIPMENT\commodities_per_faction.ini" });
             Logger.ILog("Finished Equipment-Folder");
+        }
+
+        /// <summary>
+        /// Checks commodities_per_faction.ini: the goods each faction's ships drop as loot.
+        /// </summary>
+        private static void CheckFactionGoodFile(string file)
+        {
+            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+
+            foreach (var setting in ini.sections.Where(s => s.sectionName.ToLower() == "factiongood").SelectMany(s => s.settings))
+            {
+                if (setting.NumValues() == 0)
+                    continue;
+                switch (setting.settingName.ToLower())
+                {
+                    case "faction":
+                        if (!UniverseChecks.FactionExists(setting.Str(0)))
+                            Logger.LogInvalidValue(file, setting, "Faction doesn't exist!");
+                        break;
+                    case "marketgood":
+                        if (!GoodExists(setting.Str(0)))
+                            Logger.LogInvalidValue(file, setting, "Good doesn't exist!", setting.Str(0));
+                        break;
+                }
+            }
         }
 
         private static void CheckWeaponModFile(string file)
@@ -398,6 +424,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if (category != null && !GoodCategories.Contains(category))
                             Logger.LogInvalidValue(file, section.GetSetting("category"), "Not a valid category!");
 
+                        if (equipment != null && !EquipExists(equipment))
+                            Logger.LogInvalidValue(file, section.GetSetting("equipment"), "Equipment doesn't exist!");
+
                         if (category == null)
                         {
                             Logger.LogSettingNotFound(file, nick, section.sectionName, "category");
@@ -454,7 +483,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                         Logger.LogArgCount(file, addonSettings[i], 3);
                                 }
                                 break;
-                            case "equipment": // TODO
+                            case "equipment":
                             case "commodity":
                                 break;
                             case "shiphull":

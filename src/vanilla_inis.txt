@@ -127792,12 +127792,16 @@ nickname = Br01_system_light
 nickname = Br01_Sun
 [Object]
 nickname = Br01_to_Br04
+goto = Br04, Br04_to_Br01, gate_tunnel_bretonia
 [Object]
 nickname = Br01_to_Br02
+goto = Br02, Br02_to_Br01, gate_tunnel_bretonia
 [Object]
 nickname = Br01_to_Br03
+goto = Br03, Br03_to_Br01, gate_tunnel_bretonia
 [Object]
 nickname = Br01_to_Br05
+goto = Br05, Br05_to_Br01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br01_to_Br02
 [zone]
@@ -127822,10 +127826,13 @@ nickname = Zone_Br01_Cornwall_rock_asteroid_field
 nickname = Zone_Br01_Cumbria_rock_asteroid_field
 [Object]
 nickname = Br01_to_Br03_hole
+goto = Br03, Br03_to_Br01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br01_to_Br04_hole
+goto = Br04, Br04_to_Br01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br01_to_Br05_hole
+goto = Br05, Br05_to_Br01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br01_to_Br05_hole
 [zone]
@@ -129840,10 +129847,13 @@ nickname = Br02_system_light
 nickname = Br02_Sun
 [Object]
 nickname = Br02_to_Br01
+goto = Br01, Br01_to_Br02, gate_tunnel_bretonia
 [Object]
 nickname = Br02_to_Iw04
+goto = Iw04, Iw04_to_Br02, gate_tunnel_bretonia
 [Object]
 nickname = Br02_to_Iw03
+goto = Iw03, Iw03_to_Br02, gate_tunnel_bretonia
 [Object]
 nickname = Br02_03
 base = Br02_03_Base
@@ -129941,10 +129951,12 @@ nickname = Br02_zone_Sheffield_north_exclusion_006
 nickname = Zone_Br02_to_Br04_hole
 [Object]
 nickname = Br02_to_Br04_hole
+goto = Br04, Br04_to_Br02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br02_to_Iw03_hole
 [Object]
 nickname = Br02_to_Iw03_hole
+goto = Iw03, Iw03_to_Br02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br02_Trade_Lane_Ring_40
 [Object]
@@ -130775,8 +130787,10 @@ nickname = Br03_system_light
 nickname = Br03_Sun
 [Object]
 nickname = Br03_to_Br01
+goto = Br01, Br01_to_Br03, gate_tunnel_bretonia
 [Object]
 nickname = Br03_to_Bw01
+goto = Bw01, Bw01_to_Br03, gate_tunnel_bretonia
 [Object]
 nickname = Br03_01
 base = Br03_01_Base
@@ -130973,8 +130987,10 @@ nickname = Br03_planet_Sarum
 nickname = Br03_telescope_1
 [Object]
 nickname = Br03_to_Br01_hole
+goto = Br01, Br01_to_Br03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br03_to_Bw02_hole
+goto = Bw02, Bw02_to_Br03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br03_02
 base = Br03_02_Base
@@ -131240,10 +131256,12 @@ nickname = Br03_docking_fixture_1
 base = Br03_01_Base
 [Object]
 nickname = Br03_to_Bw01_hole
+goto = Bw01, Bw01_to_Br03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br03_to_Bw01_hole_exclusion
 [Object]
 nickname = Br03_to_Br04_hole
+goto = Br04, Br04_to_Br03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br03_suprise_co_fighter_1
 [zone]
@@ -131653,10 +131671,13 @@ nickname = Br04_system_light
 nickname = Br04_Sun
 [Object]
 nickname = Br04_to_Br01
+goto = Br01, Br01_to_Br04, gate_tunnel_bretonia
 [Object]
 nickname = Br04_to_Br06
+goto = Br06, Br06_to_Br04, gate_tunnel_bretonia
 [Object]
 nickname = Br04_to_Bw10
+goto = Bw10, Bw10_to_Br04, gate_tunnel_bretonia
 [Object]
 nickname = Br04_04
 base = Br04_04_Base
@@ -131795,12 +131816,15 @@ nickname = Br04_Trade_Lane_Ring_45
 nickname = Zone_Br04_Tradelane_5
 [Object]
 nickname = Br04_to_Br06_hole
+goto = Br06, Br06_to_Br04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br04_to_Br06_hole_exclusion
 [Object]
 nickname = Br04_to_Br01_hole
+goto = Br01, Br01_to_Br04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br04_to_Br02_hole
+goto = Br02, Br02_to_Br04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br04_to_Br02_hole
 [LightSource]
@@ -132206,10 +132230,13 @@ nickname = Br04_docking_fixture_1
 base = Br04_01_base
 [Object]
 nickname = Br04_to_Br05_hole
+goto = Br05, Br05_to_Br04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br04_to_Iw03_hole
+goto = Iw03, Iw03_to_Br04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br04_to_Br03_hole
+goto = Br03, Br03_to_Br04_hole, gate_tunnel_bretonia
 [zone]
 nickname = ZONE_Br04_EastLeeds_exclusion_1
 [zone]
@@ -132727,6 +132754,7 @@ nickname = Br05_system_light
 nickname = Br05_Sun
 [Object]
 nickname = Br05_to_Br01
+goto = Br01, Br01_to_Br05, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br05_to_Br01_gate
 [zone]
@@ -132755,6 +132783,7 @@ nickname = Zone_Br05_Hood_zone
 nickname = Zone_Br05_to_Br01_jumphole
 [Object]
 nickname = Br05_to_Br01_hole
+goto = Br01, Br01_to_Br05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br05_04
 [zone]
@@ -133102,6 +133131,7 @@ nickname = zone_br05_destroy_vignette_10
 nickname = zone_br05_destroy_vignette_11
 [Object]
 nickname = Br05_to_Br04_hole
+goto = Br04, Br04_to_Br05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br05_to_Br04_jumphole
 [Object]
@@ -133550,10 +133580,12 @@ nickname = Br06_Sun1
 nickname = Br06_sun2
 [Object]
 nickname = Br06_to_Br04
+goto = Br04, Br04_to_Br06, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br06_to_Br04
 [Object]
 nickname = Br06_to_Br04_hole
+goto = Br04, Br04_to_Br06_hole, gate_tunnel_bretonia
 [Object]
 nickname = Br06_02
 base = Br06_02_Base
@@ -133593,6 +133625,7 @@ base = Br06_03_Base
 nickname = Zone_Br06_03_exclusion
 [Object]
 nickname = Br06_to_Bw10_hole
+goto = Bw10, Bw10_to_Br06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Br06_to_Bw10_hole_exclusion
 [zone]
@@ -134077,8 +134110,10 @@ nickname = Bw01_system_light
 nickname = Bw01_Sun
 [Object]
 nickname = Bw01_to_Bw03
+goto = Bw03, Bw03_to_Bw01, gate_tunnel_bretonia
 [Object]
 nickname = Bw01_to_Br03
+goto = Br03, Br03_to_Bw01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Jumpgate_Bw01_to_Br03
 [zone]
@@ -134167,6 +134202,7 @@ nickname = Bw01_mplatform_2
 nickname = Bw01_space_tankl4x4_1
 [Object]
 nickname = Bw01_to_Bw02_hole
+goto = Bw02, Bw02_to_Bw01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw01_to_Bw02_hole
 [zone]
@@ -134385,6 +134421,7 @@ nickname = zone_Bw01_destroy_vignette_9
 nickname = Zone_Bw01_05_asteroid_exclusion
 [Object]
 nickname = Bw01_to_Br03_hole
+goto = Br03, Br03_to_Bw01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw01_to_Br03_hole_exclusion
 [zone]
@@ -134711,14 +134748,19 @@ base = Bw02_01_Base
 nickname = Zone_Bw02_ice_asteroids
 [Object]
 nickname = Bw02_to_Bw01_hole
+goto = Bw01, Bw01_to_Bw02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw02_to_Br03_hole
+goto = Br03, Br03_to_Bw02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw02_to_Ew03_hole
+goto = Ew03, Ew03_to_Bw02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw02_to_Bw04_hole
+goto = Bw04, Bw04_to_Bw02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw02_to_Bw03_hole
+goto = Bw03, Bw03_to_Bw02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw02_to_Bw03_hole
 [zone]
@@ -135222,8 +135264,10 @@ file = solar\asteroids\Bw03_Guben_gas_pocket.ini
 nickname = Bw03_system_light
 [Object]
 nickname = Bw03_to_Bw01
+goto = Bw01, Bw01_to_Bw03, gate_tunnel_bretonia
 [Object]
 nickname = Bw03_to_Rh03
+goto = Rh03, Rh03_to_Bw03, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw03_to_Bw01
 [zone]
@@ -135285,8 +135329,10 @@ nickname = Zone_Bw03_03_exclusion
 nickname = Zone_Bw03_Walker_nebula
 [Object]
 nickname = Bw03_to_Bw02_hole
+goto = Bw02, Bw02_to_Bw03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw03_to_Bw04_hole
+goto = Bw04, Bw04_to_Bw03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw03_space_tankl4x4_1
 [Object]
@@ -135807,6 +135853,7 @@ nickname = Bw04_system_light
 nickname = Bw04_Sun
 [Object]
 nickname = Bw04_to_Rh03
+goto = Rh03, Rh03_to_Bw04, gate_tunnel_bretonia
 [Object]
 nickname = Bw04_Schutz_planet
 [zone]
@@ -135836,6 +135883,7 @@ nickname = Zone_Bw04_Abstand
 nickname = Zone_Bw04_to_Ew03_hole
 [Object]
 nickname = Bw04_to_Ew03_hole
+goto = Ew03, Ew03_to_Bw04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw04_02
 base = Bw04_02_Base
@@ -135845,16 +135893,20 @@ nickname = Zone_Bw04_02_exclusion
 nickname = Zone_Bw04_to_Bw02_hole
 [Object]
 nickname = Bw04_to_Bw02_hole
+goto = Bw02, Bw02_to_Bw04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw04_to_Bw03_hole
+goto = Bw03, Bw03_to_Bw04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw04_to_Bw03_hole
 [zone]
 nickname = Zone_Bw04_to_Rh05_hole
 [Object]
 nickname = Bw04_to_Rh05_hole
+goto = Rh05, Rh05_to_Bw04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw04_to_Rh03_hole
+goto = Rh03, Rh03_to_Bw04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw04_to_Rh03_hole
 [LightSource]
@@ -136284,8 +136336,10 @@ nickname = Bw05_system_light
 nickname = Bw05_Sun1
 [Object]
 nickname = Bw05_to_Rh04
+goto = Rh04, Rh04_to_Bw05, gate_tunnel_bretonia
 [Object]
 nickname = Bw05_to_Ku04
+goto = Ku04, Ku04_to_Bw05, gate_tunnel_bretonia
 [Object]
 nickname = Bw05_01
 base = Bw05_01_Base
@@ -136317,8 +136371,10 @@ nickname = Zone_Bw05_sun2_exclusion
 nickname = Zone_Bw05_yanagi_pocket_debris_field
 [Object]
 nickname = Bw05_to_Bw06_hole
+goto = Bw06, Bw06_to_Bw05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw05_to_Bw07_hole
+goto = Bw07, Bw07_to_Bw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw05_to_Bw07_hole
 [zone]
@@ -136369,10 +136425,12 @@ nickname = Zone_Bw05_oxygen_pocket_002
 nickname = Zone_Bw05_oxygen_pocket_003
 [Object]
 nickname = Bw05_to_Rh04_hole
+goto = Rh04, Rh04_to_Bw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw05_to_Rh04_hole
 [Object]
 nickname = Bw05_to_Ku04_hole
+goto = Ku04, Ku04_to_Bw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw05_to_Ku04_hole
 [zone]
@@ -136658,10 +136716,12 @@ nickname = zone_Bw05_destroy_vignette_6
 nickname = zone_Bw05_destroy_vignette_7
 [Object]
 nickname = Bw05_to_Ku06_hole
+goto = Ku06, Ku06_to_Bw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw05_story_exclusion
 [Object]
 nickname = Bw05_to_Rh01_hole
+goto = Rh01, Rh01_to_Bw05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw05_suprise_rh_elite_1
 [Object]
@@ -136958,6 +137018,7 @@ nickname = Bw06_dock_ring_1
 nickname = Zone_Bw06_to_Ew04_hole
 [Object]
 nickname = Bw06_to_Ew04_hole
+goto = Ew04, Ew04_to_Bw06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw06_02_exclusion
 [zone]
@@ -136966,8 +137027,10 @@ nickname = Zone_Bw06_to_Bw05_hole
 nickname = Zone_Bw06_to_Bw07_hole
 [Object]
 nickname = Bw06_to_Bw07_hole
+goto = Bw07, Bw07_to_Bw06_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw06_to_Bw05_hole
+goto = Bw05, Bw05_to_Bw06_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw06_sun2
 [Object]
@@ -136976,6 +137039,7 @@ nickname = Bw06_sun3
 nickname = Bw06_Crow_light
 [Object]
 nickname = Bw06_to_Bw07
+goto = Bw07, Bw07_to_Bw06, gate_tunnel_bretonia
 [LightSource]
 nickname = edge_light
 [Object]
@@ -137346,6 +137410,7 @@ file = solar\asteroids\Bw07_Gikka_dust_field.ini
 nickname = Bw07_system_light
 [Object]
 nickname = Bw07_to_Ku04
+goto = Ku04, Ku04_to_Bw07, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw07_to_Ku04
 [Object]
@@ -137382,20 +137447,25 @@ nickname = Zone_Bw07_Gikka_dust_field
 nickname = Zone_Bw07_to_Bw06_hole
 [Object]
 nickname = Bw07_to_Bw06_hole
+goto = Bw06, Bw06_to_Bw07_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw07_to_Ew02_hole
+goto = Ew02, Ew02_to_Bw07_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw07_to_Ew02_hole
 [Object]
 nickname = Bw07_to_Bw05_hole
+goto = Bw05, Bw05_to_Bw07_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw07_to_Bw05_hole
 [zone]
 nickname = Zone_Bw07_to_Ku04_hole
 [Object]
 nickname = Bw07_to_Ku04_hole
+goto = Ku04, Ku04_to_Bw07_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw07_to_Bw06
+goto = Bw06, Bw06_to_Bw07, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw07_sun2_death
 [zone]
@@ -137871,8 +137941,10 @@ nickname = Zone_Bw08_to_Ew01_hole
 nickname = Zone_Bw08_02
 [Object]
 nickname = Bw08_to_Ku03_hole
+goto = Ku03, Ku03_to_Bw08_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw08_to_Ew01_hole
+goto = Ew01, Ew01_to_Bw08_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw08_01
 base = Bw08_01_Base
@@ -137884,12 +137956,14 @@ nickname = Zone_Bw08_03
 nickname = Zone_Bw08_sun_exclusion
 [Object]
 nickname = Bw08_to_Bw09_hole
+goto = Bw09, Bw09_to_Bw08_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw08_to_Bw09_hole
 [zone]
 nickname = Zone_Bw08_asteroid_field
 [Object]
 nickname = Bw08_to_Bw10
+goto = Bw10, Bw10_to_Bw08, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw08_niobium2
 [zone]
@@ -138387,8 +138461,10 @@ nickname = Bw09_system_light
 nickname = Bw09_Sun
 [Object]
 nickname = Bw09_to_Ku03
+goto = Ku03, Ku03_to_Bw09, gate_tunnel_bretonia
 [Object]
 nickname = Bw09_to_Bw10
+goto = Bw10, Bw10_to_Bw09, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw09_to_Bw10
 [zone]
@@ -138443,8 +138519,10 @@ nickname = Bw09_Trade_Lane_Ring_14
 nickname = Zone_Bw09_Tradelane_3
 [Object]
 nickname = Bw09_to_Bw08_hole
+goto = Bw08, Bw08_to_Bw09_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw09_to_Bw10_hole
+goto = Bw10, Bw10_to_Bw09_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw09_to_Bw08_hole
 [zone]
@@ -138976,6 +139054,7 @@ nickname = Zone_Bw10_sun_exclusion
 nickname = Bw10_01_dock
 [Object]
 nickname = Bw10_to_Br04
+goto = Br04, Br04_to_Bw10, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw10_to_Br04
 [zone]
@@ -138984,8 +139063,10 @@ nickname = Zone_Bw10_to_Bw09
 nickname = Zone_Bw10_to_Bw08
 [Object]
 nickname = Bw10_to_Bw09
+goto = Bw09, Bw09_to_Bw10, gate_tunnel_bretonia
 [Object]
 nickname = Bw10_to_Bw08
+goto = Bw08, Bw08_to_Bw10, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw10_02_exclusion
 [zone]
@@ -138994,6 +139075,7 @@ nickname = Zone_Bw10_Tradelane_2
 nickname = Zone_Bw10_to_Bw09_hole
 [Object]
 nickname = Bw10_to_Bw09_hole
+goto = Bw09, Bw09_to_Bw10_hole, gate_tunnel_bretonia
 [Object]
 nickname = Bw10_02
 base = Bw10_02_Base
@@ -139029,6 +139111,7 @@ nickname = Bw10_Trade_Lane_Ring_12
 nickname = Zone_Bw10_Tradelane_4
 [Object]
 nickname = Bw10_to_Br06_hole
+goto = Br06, Br06_to_Bw10_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Bw10_to_Br06_hole
 [zone]
@@ -139509,6 +139592,7 @@ nickname = Zone_Ew01_Malvinas_asteroids
 nickname = Zone_Ew01_to_Bw08_hole
 [Object]
 nickname = Ew01_to_Bw08_hole
+goto = Bw08, Bw08_to_Ew01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ew01_Bermejo_cloud
 [zone]
@@ -139517,6 +139601,7 @@ nickname = Zone_Ew01_Bermejo_ice_crystals
 nickname = Zone_Ew01_to_Hi01_hole
 [Object]
 nickname = Ew01_to_Hi01_hole
+goto = Hi01, Hi01_to_Ew01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ew01_Malvinas_exclusion_001
 [zone]
@@ -139839,8 +139924,10 @@ nickname = Zone_Ew02_edge_nebula
 nickname = Zone_Ew02_01_exclusion
 [Object]
 nickname = Ew02_to_Hi01_hole
+goto = Hi01, Hi01_to_Ew02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew02_to_Bw07_hole
+goto = Bw07, Bw07_to_Ew02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ew02_to_Hi01_hole
 [zone]
@@ -140051,12 +140138,16 @@ nickname = Zone_Ew03_planetary_fragments
 nickname = Ew03_edge_light
 [Object]
 nickname = Ew03_to_Ew04_hole
+goto = Ew04, Ew04_to_Ew03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew03_to_Bw04_hole
+goto = Bw04, Bw04_to_Ew03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew03_to_Hi02_hole
+goto = Hi02, Hi02_to_Ew03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew03_to_Bw02_hole
+goto = Bw02, Bw02_to_Ew03_hole, gate_tunnel_bretonia
 [zone]
 nickname = zone_ew03_pop_freeport5
 [zone]
@@ -140406,10 +140497,13 @@ nickname = Ew04_system_light
 nickname = Ew04_Sun
 [Object]
 nickname = Ew04_to_Hi02_hole
+goto = Hi02, Hi02_to_Ew04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew04_to_Bw06_hole
+goto = Bw06, Bw06_to_Ew04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew04_to_Ew03_hole
+goto = Ew03, Ew03_to_Ew04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ew04_to_Bw06_hole
 [zone]
@@ -140551,6 +140645,7 @@ nickname = Ew04_suprise_br_freighter_1
 nickname = Ew04_suprise_bh_elite2_1
 [Object]
 nickname = Ew04_to_Hi01_hole
+goto = Hi01, Hi01_to_Ew04_hole, gate_tunnel_bretonia
 @@ universe\systems\ew04\bases\ew04_01_base.ini
 [BaseInfo]
 nickname = Ew04_01_Base
@@ -140649,6 +140744,7 @@ nickname = Ew05_system_light
 nickname = Ew05_Sun
 [Object]
 nickname = Ew05_to_Hi01_hole
+goto = Hi01, Hi01_to_Ew05_hole, gate_tunnel_bretonia
 [Zone]
 nickname = Zone_Ew05_sun_death
 [Zone]
@@ -140678,6 +140774,7 @@ nickname = Ew06_system_light
 nickname = Ew06_Sun
 [Object]
 nickname = Ew06_to_Hi02_hole
+goto = Hi02, Hi02_to_Ew06_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ew06_sun_1000_1
 [LightSource]
@@ -140882,12 +140979,14 @@ nickname = Zone_Hi01_Siniestre_nube
 nickname = Zone_Hi01_to_Ew01_hole
 [Object]
 nickname = Hi01_to_Ew01_hole
+goto = Ew01, Ew01_to_Hi01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Hi01_Hispania_debris_field
 [zone]
 nickname = Zone_Hi01_to_Ew02_hole
 [Object]
 nickname = Hi01_to_Ew02_hole
+goto = Ew02, Ew02_to_Hi01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Hi01_planet_Mallorca
 [zone]
@@ -141030,10 +141129,12 @@ nickname = Hi01_suprise_bw_elite2_22
 nickname = Hi01_suprise_bw_elite2_23
 [Object]
 nickname = Hi01_to_Ew04_hole
+goto = Ew04, Ew04_to_Hi01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Hi01_hispania_sleeper_ship_1
 [Object]
 nickname = Hi01_to_Ew05_hole
+goto = Ew05, Ew05_to_Hi01_hole, gate_tunnel_bretonia
 @@ universe\systems\hi01\bases\hi01_01_base.ini
 [BaseInfo]
 nickname = Hi01_01_Base
@@ -141234,8 +141335,10 @@ nickname = Zone_Hi02_Gredos_asteroids
 nickname = Zone_Hi02_to_Ew03_hole
 [Object]
 nickname = Hi02_to_Ew03_hole
+goto = Ew03, Ew03_to_Hi02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Hi02_to_Ew04_hole
+goto = Ew04, Ew04_to_Hi02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Hi02_to_Ew04_hole
 [zone]
@@ -141424,6 +141527,7 @@ nickname = Hi02_suprise_co_fighter_15
 nickname = Hi02_suprise_co_fighter_16
 [Object]
 nickname = Hi02_to_Ew06_hole
+goto = Ew06, Ew06_to_Hi02_hole, gate_tunnel_bretonia
 @@ universe\systems\hi02\bases\hi02_01_base.ini
 [BaseInfo]
 nickname = Hi02_01_Base
@@ -141670,12 +141774,16 @@ nickname = Zone_Li01_Manhattan_death
 nickname = Zone_Li01_001_Planet_Li01_01_atmosphere_burn
 [Object]
 nickname = Li01_to_Li02
+goto = Li02, Li02_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li03
+goto = Li03, Li03_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li04
+goto = Li04, Li04_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li05
+goto = Li05, Li05_to_Li01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_001_Planet_Li01_01
 [Object]
@@ -141774,6 +141882,7 @@ nickname = Zone_Li01_Jumpgate_003
 nickname = Zone_Li01_to_Li05
 [Object]
 nickname = Li01_to_Iw03
+goto = Iw03, Iw03_to_Li01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_Jumpgate_to_Iw03
 [zone]
@@ -142012,6 +142121,7 @@ nickname = Zone_Li01_pop_badlands_southwest
 nickname = Zone_Li01_to_Li04_hole
 [Object]
 nickname = Li01_to_Li04_hole
+goto = Li04, Li04_to_LI01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Li01_space_tankl4_1
 [Object]
@@ -142036,6 +142146,7 @@ nickname = Li01_small_wplatform_6
 nickname = Li01_14_large_transport_1
 [Object]
 nickname = Li01_to_Li03_hole
+goto = Li03, Li03_to_Li01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_to_Li03_hole_exclusion
 [zone]
@@ -142747,8 +142858,10 @@ nickname = Iw01_system_light
 nickname = Iw01_Sun
 [Object]
 nickname = Iw01_to_Rh02
+goto = Rh02, Rh02_to_Iw01, gate_tunnel_bretonia
 [Object]
 nickname = Iw01_to_Li04
+goto = Li04, Li04_to_Iw01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw01_to_Rh02
 [zone]
@@ -142795,11 +142908,13 @@ nickname = Iw01_Trade_Lane_Ring_13
 nickname = Zone_Iw01_Tradelane_2
 [Object]
 nickname = Iw01_to_Rh02_hole
+goto = Rh02, Rh02_to_Iw01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Iw01_01
 base = Iw01_01_Base
 [Object]
 nickname = Iw01_to_Iw02_hole
+goto = Iw02, Iw02_to_Iw01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Iw01_02
 base = Iw01_02_Base
@@ -143176,6 +143291,7 @@ nickname = Iw02_system_light
 nickname = Iw02_Sun
 [Object]
 nickname = Iw02_to_Rh02
+goto = Rh02, Rh02_to_Iw02, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw02_to_Li04
 [zone]
@@ -143218,8 +143334,10 @@ nickname = Iw02_Trade_Lane_Ring_12
 nickname = Zone_Iw02_Tradelane_2
 [Object]
 nickname = Iw02_to_Li04
+goto = Li04, Li04_to_Iw02, gate_tunnel_bretonia
 [Object]
 nickname = Iw02_to_Li04_hole
+goto = Li04, Li04_to_Iw02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw02_to_Li04_hole
 [zone]
@@ -143236,6 +143354,7 @@ nickname = Iw02_01
 base = Iw02_01_Base
 [Object]
 nickname = Iw02_to_Iw01_hole
+goto = Iw01, Iw01_to_Iw02_hole, gate_tunnel_bretonia
 [zone]
 nickname = zone_iw02_pop_jumpgate_hamburg
 [zone]
@@ -143640,8 +143759,10 @@ file = solar\asteroids\Iw03_Barrier_ice_asteroid_field.ini
 file = solar\nebula\Iw03_Barrier_ice_cloud.ini
 [Object]
 nickname = Iw03_to_Br02
+goto = Br02, Br02_to_Iw03, gate_tunnel_bretonia
 [Object]
 nickname = Iw03_to_Li02
+goto = Li02, Li02_to_Iw03, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw03_to_Br02
 [zone]
@@ -143684,6 +143805,7 @@ nickname = Zone_Iw03_Tradelane_2
 nickname = Zone_Iw03_to_Iw04_hole
 [Object]
 nickname = Iw03_to_Iw04_hole
+goto = Iw04, Iw04_to_Iw03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw03_Barrier_ice_cloud
 [zone]
@@ -143701,11 +143823,13 @@ nickname = Zone_Iw03_IMG_mining_access
 nickname = Zone_Iw03_to_Br02_hole
 [Object]
 nickname = Iw03_to_Br02_hole
+goto = Br02, Br02_to_Iw03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Iw03_Roid_Miner_1
 base = gd_im_water_miner
 [Object]
 nickname = Iw03_to_li01
+goto = Li01, Li01_to_Iw03, gate_tunnel_bretonia
 [Object]
 nickname = Iw03_space_tankl4_1
 [Object]
@@ -143885,6 +144009,7 @@ nickname = zone_iw03_destroy_vignette_17
 nickname = zone_iw03_destroy_vignette_18
 [Object]
 nickname = Iw03_to_Br04_hole
+goto = Br04, Br04_to_Iw03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw03_to_Br04_hole_exclusion
 [zone]
@@ -144116,8 +144241,10 @@ nickname = Iw04_system_light
 nickname = Iw04_Sun
 [Object]
 nickname = Iw04_to_Br02
+goto = Br02, Br02_to_Iw04, gate_tunnel_bretonia
 [Object]
 nickname = Iw04_to_Li02
+goto = Li02, Li02_to_Iw04, gate_tunnel_bretonia
 [Object]
 nickname = Iw04_01
 base = Iw04_01_Base
@@ -144167,8 +144294,10 @@ nickname = Zone_Iw04_Paloma_ice_crystals
 nickname = Zone_Iw04_Corcovado_field
 [Object]
 nickname = Iw04_to_Iw03_hole
+goto = Iw03, Iw03_to_Iw04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Iw04_to_Li02_hole
+goto = Li02, Li02_to_Iw04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw04_to_Li02_hole
 [zone]
@@ -144590,8 +144719,10 @@ file = solar\asteroids\Iw05_Matsuo_asteroids.ini
 nickname = Iw05_system_light
 [Object]
 nickname = Iw05_to_Ku02
+goto = Ku02, Ku02_to_Iw05, gate_tunnel_bretonia
 [Object]
 nickname = Iw05_to_Li03
+goto = Li03, Li03_to_Iw05, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw05_to_Li02
 [zone]
@@ -144646,10 +144777,12 @@ base = Iw05_02_Base
 nickname = Zone_Iw05_02
 [Object]
 nickname = Iw05_to_Li03_hole
+goto = Li03, Li03_to_Iw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw05_to_Li03_hole
 [Object]
 nickname = Iw05_to_Iw06_hole
+goto = Iw06, Iw06_to_Iw05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw05_to_Iw06_hole
 [zone]
@@ -144995,8 +145128,10 @@ file = solar\asteroids\Iw06_Raiden_asteroids.ini
 nickname = Iw06_crow_light
 [Object]
 nickname = Iw06_to_Ku02
+goto = Ku02, Ku02_to_Iw06, gate_tunnel_bretonia
 [Object]
 nickname = Iw06_to_Li03
+goto = Li03, Li03_to_Iw06, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw06_to_Li02
 [zone]
@@ -145020,10 +145155,12 @@ base = Iw06_02_Base
 nickname = Zone_Iw06_02
 [Object]
 nickname = Iw06_to_Li03_hole
+goto = Li03, Li03_to_Iw06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw06_to_Li03_hole
 [Object]
 nickname = Iw06_to_Iw05_hole
+goto = Iw05, Iw05_to_Iw06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw06_to_Iw05_hole
 [Object]
@@ -145071,6 +145208,7 @@ base = Iw06_01_Base
 nickname = Zone_Iw06_01
 [Object]
 nickname = Iw06_to_Ku02_hole
+goto = Ku02, Ku02_to_Iw06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Iw06_to_Ku02_hole
 [zone]
@@ -145432,12 +145570,16 @@ nickname = Ku01_system_light
 nickname = Ku01_Sun
 [Object]
 nickname = Ku01_to_Ku02
+goto = Ku02, Ku02_to_Ku01, gate_tunnel_bretonia
 [Object]
 nickname = Ku01_to_Ku03
+goto = Ku03, Ku03_to_Ku01, gate_tunnel_bretonia
 [Object]
 nickname = Ku01_to_Ku04
+goto = Ku04, Ku04_to_Ku01, gate_tunnel_bretonia
 [Object]
 nickname = Ku01_to_Ku05
+goto = Ku05, Ku05_to_Ku01, gate_tunnel_bretonia
 [Object]
 nickname = Ku01_dock_ring_1
 [Object]
@@ -145631,8 +145773,10 @@ nickname = Ku01_Trade_Lane_Ring_69
 nickname = Zone_Ku01_Tradelane_7
 [Object]
 nickname = Ku01_to_Ku03_hole
+goto = Ku03, Ku03_to_Ku01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ku01_to_Ku04_hole
+goto = Ku04, Ku04_to_Ku01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku01_to_Ku04_hole
 [zone]
@@ -146610,8 +146754,10 @@ nickname = Ku02_system_light
 nickname = Ku02_Sun
 [Object]
 nickname = Ku02_to_Ku01
+goto = Ku01, Ku01_to_Ku02, gate_tunnel_bretonia
 [Object]
 nickname = Ku02_to_Iw06
+goto = Iw06, Iw06_to_Ku02, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku02_Saiun_cloud
 [zone]
@@ -146644,6 +146790,7 @@ nickname = Zone_Ku02_Fuchu_ring
 nickname = Zone_Ku02_03
 [Object]
 nickname = Ku02_to_Iw05
+goto = Iw05, Iw05_to_Ku02, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku02_to_Iw05
 [Object]
@@ -146747,10 +146894,12 @@ nickname = Ku02_Trade_Lane_Ring_51
 nickname = Zone_Ku02_Tradelane_6
 [Object]
 nickname = Ku02_to_Iw06_hole
+goto = Iw06, Iw06_to_Ku02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku02_to_Iw06_hole
 [Object]
 nickname = Ku02_to_Ku03_hole
+goto = Ku03, Ku03_to_Ku02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku02_to_Ku03_hole
 [Object]
@@ -147436,8 +147585,10 @@ nickname = Ku03_sun2
 nickname = Ku03_Sun1
 [Object]
 nickname = Ku03_to_Ku01
+goto = Ku01, Ku01_to_Ku03, gate_tunnel_bretonia
 [Object]
 nickname = Ku03_to_Bw09
+goto = Bw09, Bw09_to_Ku03, gate_tunnel_bretonia
 [Object]
 nickname = Ku03_dock_ring_1
 [zone]
@@ -147534,16 +147685,20 @@ nickname = Ku03_03
 base = Ku03_03_Base
 [Object]
 nickname = Ku03_to_Bw08_hole
+goto = Bw08, Bw08_to_Ku03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku03_to_Bw08_hole
 [Object]
 nickname = Ku03_to_Ku05_hole
+goto = Ku05, Ku05_to_Ku03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku03_to_Ku05_hole
 [Object]
 nickname = Ku03_to_Ku01_hole
+goto = Ku01, Ku01_to_Ku03_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ku03_to_Ku02_hole
+goto = Ku02, Ku02_to_Ku03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku03_to_Ku02_hole
 [zone]
@@ -148244,8 +148399,10 @@ nickname = Ku04_system_light
 nickname = Ku04_Sun
 [Object]
 nickname = Ku04_to_Ku01
+goto = Ku01, Ku01_to_Ku04, gate_tunnel_bretonia
 [Object]
 nickname = Ku04_to_Bw07
+goto = Bw07, Bw07_to_Ku04, gate_tunnel_bretonia
 [Object]
 nickname = Ku04_dock_ring_1
 [Object]
@@ -148253,6 +148410,7 @@ nickname = Ku04_01
 base = Ku04_01_Base
 [Object]
 nickname = Ku04_to_Bw05
+goto = Bw05, Bw05_to_Ku04, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku04_05
 [zone]
@@ -148291,12 +148449,15 @@ nickname = Zone_Ku04_04_exclusion
 nickname = Zone_Ku04_to_Bw07_hole
 [Object]
 nickname = Ku04_to_Ku01_hole
+goto = Ku01, Ku01_to_Ku04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku04_to_Ku01_hole
 [Object]
 nickname = Ku04_to_Bw07_hole
+goto = Bw07, Bw07_to_Ku04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ku04_to_Bw05_hole
+goto = Bw05, Bw05_to_Ku04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ku04_05
 base = Ku04_05_Base
@@ -148480,6 +148641,7 @@ nickname = Zone_Ku04_Tradelane_8
 nickname = Zone_Ku04_to_Ku06_hole
 [Object]
 nickname = Ku04_to_Ku06_hole
+goto = Ku06, Ku06_to_Ku04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku04_sun_death
 [zone]
@@ -149320,6 +149482,7 @@ nickname = Ku05_system_light
 nickname = Ku05_Sun
 [Object]
 nickname = Ku05_to_Ku01
+goto = Ku01, Ku01_to_Ku05, gate_tunnel_bretonia
 [Object]
 nickname = Ku05_02
 base = Ku05_02_Base
@@ -149342,6 +149505,7 @@ nickname = Zone_Ku05_sun_death
 nickname = Zone_Ku05_to_Ku03_hole
 [Object]
 nickname = Ku05_to_Ku03_hole
+goto = Ku03, Ku03_to_Ku05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku05_02
 [Object]
@@ -149426,12 +149590,14 @@ nickname = Ku05_nav_buoy_41
 nickname = Zone_Ku05_Tradelane_2
 [Object]
 nickname = Ku05_to_Ku06_hole
+goto = Ku06, Ku06_to_Ku05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku05_to_Ku06_hole
 [zone]
 nickname = Zone_Ku05_to_Ku07_hole
 [Object]
 nickname = Ku05_to_Ku07_hole
+goto = Ku07, Ku07_to_Ku05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Ku05_01
 base = Ku05_01_Base
@@ -149970,6 +150136,7 @@ file = solar\nebula\Ku06_Okamura_cloud.ini
 nickname = Zone_Ku06_Okamura_cloud
 [Object]
 nickname = Ku06_to_Ku05_hole
+goto = Ku05, Ku05_to_Ku06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku06_to_Ku05_hole
 [Object]
@@ -149977,6 +150144,7 @@ nickname = Ku06_01
 base = Ku06_01_Base
 [Object]
 nickname = Ku06_to_Ku07_hole
+goto = Ku07, Ku07_to_Ku06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku06_to_Ku07_hole
 [zone]
@@ -149985,6 +150153,7 @@ nickname = Zone_Ku06_01_exclusion
 nickname = Zone_Ku06_to_Ku04_hole
 [Object]
 nickname = Ku06_to_Ku04_hole
+goto = Ku04, Ku04_to_Ku06_hole, gate_tunnel_bretonia
 [zone]
 nickname = zone_ku06_pop_tohuku_hole
 [zone]
@@ -150043,6 +150212,7 @@ nickname = zone_ku06_destroy_vignette_6
 nickname = zone_ku06_destroy_vignette_7
 [Object]
 nickname = Ku06_to_BW05_hole
+goto = Bw05, Bw05_to_Ku06_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku06_to_Bw05_hole_exclusion
 [zone]
@@ -150200,12 +150370,14 @@ nickname = Ku07_system_light
 nickname = Ku07_Sun
 [Object]
 nickname = Ku07_to_Ku06_hole
+goto = Ku06, Ku06_to_Ku07_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku07_to_Ku06_hole
 [zone]
 nickname = Zone_Ku07_to_Ku05_hole
 [Object]
 nickname = Ku07_to_Ku05_hole
+goto = Ku05, Ku05_to_Ku07_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Ku07_Izu_planetary_fragments
 [zone]
@@ -150463,12 +150635,16 @@ nickname = Zone_Li01_Manhattan_death
 nickname = Zone_Li01_001_Planet_Li01_01_atmosphere_burn
 [Object]
 nickname = Li01_to_Li02
+goto = Li02, Li02_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li03
+goto = Li03, Li03_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li04
+goto = Li04, Li04_to_Li01, gate_tunnel_bretonia
 [Object]
 nickname = Li01_to_Li05
+goto = Li05, Li05_to_Li01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_001_Planet_Li01_01
 [Object]
@@ -150567,6 +150743,7 @@ nickname = Zone_Li01_Jumpgate_003
 nickname = Zone_Li01_to_Li05
 [Object]
 nickname = Li01_to_Iw03
+goto = Iw03, Iw03_to_Li01, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_Jumpgate_to_Iw03
 [zone]
@@ -150797,6 +150974,7 @@ nickname = Zone_Li01_pop_badlands_southwest
 nickname = Zone_Li01_to_Li04_hole
 [Object]
 nickname = Li01_to_Li04_hole
+goto = Li04, Li04_to_LI01_hole, gate_tunnel_bretonia
 [Object]
 nickname = Li01_space_tankl4_1
 [Object]
@@ -150821,6 +150999,7 @@ nickname = Li01_small_wplatform_6
 nickname = Li01_14_large_transport_1
 [Object]
 nickname = Li01_to_Li03_hole
+goto = Li03, Li03_to_Li01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01_to_Li03_hole_exclusion
 [zone]
@@ -151570,8 +151749,10 @@ nickname = ZONE_Li01_vignette57_exclusion
 nickname = ZONE_Li01_vignette60_exclusion
 [Object]
 nickname = Li01a_to_Li01b_hole
+goto = Li01, Li01b_to_Li01a_hole, gate_tunnel_bretonia
 [Object]
 nickname = Li01b_to_Li01a_hole
+goto = Li01, Li01a_to_Li01b_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li01a_to_Li01b_hole
 [Object]
@@ -152634,10 +152815,13 @@ nickname = Li02_Sun
 nickname = zone_Li02_sun_death
 [Object]
 nickname = Li02_to_Li01
+goto = Li01, Li01_to_Li02, gate_tunnel_bretonia
 [Object]
 nickname = Li02_to_Iw04
+goto = Iw04, Iw04_to_Li02, gate_tunnel_bretonia
 [Object]
 nickname = Li02_to_Iw03
+goto = Iw03, Iw03_to_Li02, gate_tunnel_bretonia
 [zone]
 nickname = zone_Li02_Jumpgate_to_Br02
 [zone]
@@ -152787,8 +152971,10 @@ nickname = Zone_Li02_Tahoe_ice_crystal_cloud
 nickname = zone_Li02_Tahoe_ice_crystal_field
 [Object]
 nickname = Li02_to_Iw04_hole
+goto = Iw04, Iw04_to_Li02_hole, gate_tunnel_bretonia
 [Object]
 nickname = Li02_to_Li04_hole
+goto = Li04, Li04_to_Li02_hole, gate_tunnel_bretonia
 [zone]
 nickname = zone_Li02_to_Li04_hole
 [zone]
@@ -153876,10 +154062,13 @@ nickname = Li03_system_light
 nickname = Li03_Sun
 [Object]
 nickname = Li03_to_Li01
+goto = Li01, Li01_to_Li03, gate_tunnel_bretonia
 [Object]
 nickname = Li03_to_Iw06
+goto = Iw06, Iw06_to_Li03, gate_tunnel_bretonia
 [Object]
 nickname = Li03_to_Iw05
+goto = Iw05, Iw05_to_Li03, gate_tunnel_bretonia
 [Object]
 nickname = Li03_01
 base = Li03_01_Base
@@ -154087,14 +154276,17 @@ nickname = Li03_Trade_Lane_Ring_144
 nickname = Li03_Trade_Lane_Ring_145
 [Object]
 nickname = Li03_to_Iw06_hole
+goto = Iw06, Iw06_to_Li03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li03_to_Iw06_hole
 [Object]
 nickname = Li03_to_Iw05_hole
+goto = Iw05, Iw05_to_Li03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li03_to_Iw05_hole
 [Object]
 nickname = Li03_to_Li01_hole
+goto = Li01, Li01_to_Li03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li03_to_Li01_hole
 [zone]
@@ -154950,10 +155142,13 @@ nickname = Li04_system_light
 nickname = Li04_Sun
 [Object]
 nickname = Li04_to_Li01
+goto = Li01, Li01_to_Li04, gate_tunnel_bretonia
 [Object]
 nickname = Li04_to_Iw01
+goto = Iw01, Iw01_to_Li04, gate_tunnel_bretonia
 [Object]
 nickname = Li04_to_Iw02
+goto = Iw02, Iw02_to_Li04, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li04_to_Iw02
 [zone]
@@ -155083,14 +155278,17 @@ nickname = Zone_Li04_Brazos_death
 nickname = Zone_Li04_to_Li02_hole
 [Object]
 nickname = Li04_to_Li01_hole
+goto = Li01, Li01_to_Li04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Li04_to_Li02_hole
+goto = Li02, Li02_to_Li04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li04_05
 [zone]
 nickname = Zone_Li04_to_Li01_hole
 [Object]
 nickname = Li04_to_Iw02_hole
+goto = Iw02, Iw02_to_Li04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li04_to_Iw02_hole
 [Object]
@@ -156212,6 +156410,7 @@ nickname = Li05_system_light
 nickname = Li05_Sun
 [Object]
 nickname = Li05_to_Li01
+goto = Li01, Li01_to_Li05, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Li05_nebula
 [zone]
@@ -156504,12 +156703,16 @@ nickname = Rh01_system_light
 nickname = Rh01_Sun
 [Object]
 nickname = Rh01_to_Rh02
+goto = Rh02, Rh02_to_Rh01, gate_tunnel_bretonia
 [Object]
 nickname = Rh01_to_Rh03
+goto = Rh03, Rh03_to_Rh01, gate_tunnel_bretonia
 [Object]
 nickname = Rh01_to_Rh04
+goto = Rh04, Rh04_to_Rh01, gate_tunnel_bretonia
 [Object]
 nickname = Rh01_to_Rh05
+goto = Rh05, Rh05_to_Rh01, gate_tunnel_bretonia
 [Object]
 nickname = Rh01_01
 base = Rh01_01_Base
@@ -156745,10 +156948,12 @@ nickname = Zone_Rh01_Ruhr_radioactive_001
 nickname = Zone_Rh01_Ruhr_radioactive_002
 [Object]
 nickname = Rh01_to_Rh02_hole
+goto = Rh02, Rh02_to_Rh01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh01_to_Rh02_hole
 [Object]
 nickname = Rh01_to_Rh05_hole
+goto = Rh05, Rh05_to_Rh01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh01_to_Rh05_hole
 [zone]
@@ -157363,6 +157568,7 @@ nickname = Rh01_suprise_ge_fighter4_1
 nickname = Rh01_suprise_bw_elite_1
 [Object]
 nickname = Rh01_to_Bw05_hole
+goto = Bw05, Bw05_to_Rh01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh01_to_Bw05_hole
 [zone]
@@ -157950,10 +158156,13 @@ nickname = Rh02_System_Light
 nickname = Rh02_Sun
 [Object]
 nickname = Rh02_to_Iw02
+goto = Iw02, Iw02_to_Rh02, gate_tunnel_bretonia
 [Object]
 nickname = Rh02_to_Rh01
+goto = Rh01, Rh01_to_Rh02, gate_tunnel_bretonia
 [Object]
 nickname = Rh02_to_Iw01
+goto = Iw01, Iw01_to_Rh02, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh02_to_Iw02
 [zone]
@@ -158096,14 +158305,17 @@ nickname = Rh02_05
 base = Rh02_05_Base
 [Object]
 nickname = Rh02_to_Iw01_hole
+goto = Iw01, Iw01_to_Rh02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh02_to_Iw01_hole
 [Object]
 nickname = Rh02_to_Rh01_hole
+goto = Rh01, Rh01_to_Rh02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh02_to_Rh01_hole
 [Object]
 nickname = Rh02_to_Rh04_hole
+goto = Rh04, Rh04_to_Rh02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh02_to_Rh04_hole
 [zone]
@@ -158383,6 +158595,7 @@ nickname = zone_rh02_destroy_vignette_19
 nickname = zone_rh02_destroy_vignette_20
 [Object]
 nickname = Rh02_to_Rh04_holeb
+goto = Rh04, Rh04_to_Rh02_holeb, gate_tunnel_bretonia
 [zone]
 nickname = ZONE_Rh02_vignette2_exclusion
 [zone]
@@ -158939,8 +159152,10 @@ nickname = Rh03_System_Light
 nickname = Rh03_Sun
 [Object]
 nickname = Rh03_to_Bw03
+goto = Bw03, Bw03_to_Rh03, gate_tunnel_bretonia
 [Object]
 nickname = Rh03_to_Bw04
+goto = Bw04, Bw04_to_Rh03, gate_tunnel_bretonia
 [Object]
 nickname = Rh03_01
 base = Rh03_01_Base
@@ -159076,10 +159291,12 @@ nickname = Rh03_03
 base = Rh03_03_Base
 [Object]
 nickname = Rh03_to_Bw04_hole
+goto = Bw04, Bw04_to_Rh03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh03_to_Bw04_hole
 [Object]
 nickname = Rh03_to_Rh05_hole
+goto = Rh05, Rh05_to_Rh03_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh03_to_Rh05_hole
 [Object]
@@ -159095,6 +159312,7 @@ nickname = Rh03_04
 base = Rh03_04_Base
 [Object]
 nickname = Rh03_to_Rh01
+goto = Rh01, Rh01_to_Rh03, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh03_sun_death
 [zone]
@@ -159810,8 +160028,10 @@ nickname = Rh04_System_Light
 nickname = Rh04_Sun
 [Object]
 nickname = Rh04_to_Rh01
+goto = Rh01, Rh01_to_Rh04, gate_tunnel_bretonia
 [Object]
 nickname = Rh04_to_Bw05
+goto = Bw05, Bw05_to_Rh04, gate_tunnel_bretonia
 [Object]
 nickname = Rh04_01
 base = Rh04_01_Base
@@ -159907,14 +160127,17 @@ nickname = Rh04_05
 base = Rh04_05_Base
 [Object]
 nickname = Rh04_to_Bw05_hole
+goto = Bw05, Bw05_to_Rh04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh04_to_Bw05_hole
 [zone]
 nickname = Zone_Rh04_Weisser_ring
 [Object]
 nickname = Rh04_to_Rh05_hole
+goto = Rh05, Rh05_to_Rh04_hole, gate_tunnel_bretonia
 [Object]
 nickname = Rh04_to_Rh02_hole
+goto = Rh02, Rh02_to_Rh04_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh04_to_Rh02_hole
 [zone]
@@ -160076,6 +160299,7 @@ nickname = zone_rh04_destroy_vignette_12
 nickname = zone_rh04_destroy_vignette_13
 [Object]
 nickname = Rh04_to_Rh02_holeb
+goto = Rh02, Rh02_to_Rh04_holeb, gate_tunnel_bretonia
 [zone]
 nickname = ZONE_Rh04_vignette5_exclusion
 [zone]
@@ -160566,6 +160790,7 @@ nickname = Rh05_System_Light
 nickname = Rh05_Sun
 [Object]
 nickname = Rh05_to_Rh01
+goto = Rh01, Rh01_to_Rh05, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh05_to_Rh01
 [zone]
@@ -160634,14 +160859,18 @@ nickname = Rh05_02
 base = Rh05_02_Base
 [Object]
 nickname = Rh05_to_Rh01_hole
+goto = Rh01, Rh01_to_Rh05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Rh05_to_Bw04_hole
+goto = Bw04, Bw04_to_Rh05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh05_to_Rh03_hole
 [Object]
 nickname = Rh05_to_Rh03_hole
+goto = Rh03, Rh03_to_Rh05_hole, gate_tunnel_bretonia
 [Object]
 nickname = Rh05_to_Rh04_hole
+goto = Rh04, Rh04_to_Rh05_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_Rh05_Daumann_feld
 [Object]
@@ -161267,8 +161496,10 @@ nickname = St01_dock_ring_1
 nickname = Zone_St01_01_exclusion
 [Object]
 nickname = St01_to_St02_hole
+goto = St02, St02_to_St01_hole, gate_tunnel_bretonia
 [Object]
 nickname = St01_to_St03_hole
+goto = St03, St03_to_St01_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_St01_to_St03_hole_exclusion
 [zone]
@@ -161478,10 +161709,13 @@ nickname = Zone_St02_lair_exclusion
 nickname = St02_lair_1
 [Object]
 nickname = St02_lair_enter
+goto = St02c, St02c_core_enter, gate_tunnel_bretonia
 [Object]
 nickname = St02_lair_exit
+goto = St02c, St02c_core_exit, gate_tunnel_bretonia
 [Object]
 nickname = St02_to_St01_hole
+goto = St01, St01_to_St02_hole, gate_tunnel_bretonia
 [zone]
 nickname = Zone_St02_to_St01_hole
 [zone]
@@ -161586,8 +161820,10 @@ file = universe\heavens\shapes.ini
 file = solar\nebula\St02b_edge_nebula.ini
 [Object]
 nickname = St02c_core_enter
+goto = St02, St02_lair_enter, gate_tunnel_bretonia
 [Object]
 nickname = St02c_core_exit
+goto = St02, St02_lair_exit, gate_tunnel_bretonia
 [LightSource]
 nickname = lair_core_upper
 [zone]
@@ -161628,6 +161864,7 @@ nickname = St03_system_light
 nickname = St03_dyson_1
 [Object]
 nickname = St03_dyson_airlock_1
+goto = St03b, St03b_dyson_airlock_1, gate_tunnel_bretonia
 [zone]
 nickname = St03_dyson_nebula_zone
 [Object]
@@ -161636,6 +161873,7 @@ nickname = St03_planet_desert_600_1
 nickname = St03_Sun
 [Object]
 nickname = St03_to_St01_hole
+goto = St01, St01_to_St03_hole, gate_tunnel_bretonia
 [zone]
 nickname = zone_st03_pop_nomads
 [zone]
@@ -161690,6 +161928,7 @@ nickname = St03b_system_light
 nickname = St03b_Sun
 [Object]
 nickname = St03b_dyson_airlock_1
+goto = St03, St03_dyson_airlock_1, gate_tunnel_bretonia
 [zone]
 nickname = Zone_St03b_sun_death
 [zone]

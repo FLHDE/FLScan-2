@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Globalization;
 
 using FLScanIE.Util_Functions;
 using FLScanIE.Logging;
@@ -22,6 +23,13 @@ namespace FLScanIE
         //                         sys                type     nicks
         private static Dictionary<string, Dictionary<string, string[]>> objectNicks;
 
+        //                         sys      systems it has a jump gate or hole to (all lowercase)
+        private static Dictionary<string, HashSet<string>> systemConnections;
+
+        // The game reads these files instead of computing the routes itself
+        private static readonly string[] shortestPathFiles =
+            { @"universe\shortest_illegal_path.ini", @"universe\shortest_legal_path.ini", @"universe\systems_shortest_path.ini" };
+
         private static string[] popTypes = Util.LoadConfig("ZonePopTypes");
         // Faction ([Group]) nicknames from initialworld.ini (lowercase), or null if that file isn't present
         private static HashSet<string> factionNicks;
@@ -34,6 +42,7 @@ namespace FLScanIE
             Logger.ILog("Checking Universe-Folder");
             Util.RunChecks(CheckUniverseFile, universeFiles);
             Util.RunChecks(CheckBaseFile, baseFiles.Select(b => b.Value));
+            Util.RunChecks(CheckShortestPathFile, shortestPathFiles);
             Logger.ILog("Finished Universe-Folder");
         }
 
@@ -84,14 +93,27 @@ namespace FLScanIE
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
             /*
-            [Room_Info] set_script  file exists
-            [Room_Info] scene   1st-value: TODO, 2nd-value: file exists
             [Room_Sound] music  sound exists
             [Room_Sound] ambient  sound exists
-            [CharacterPlacement] start_script  file exists
             [Camera] name  TODO: thn?
             [CharacterPlacement] name  TODO: thn
             */
+
+            foreach (var script in ini.GetSettings("Room_Info", "set_script").Union(ini.GetSettings("CharacterPlacement", "start_script")))
+            {
+                if (script.NumValues() > 0 && !Checker.FileExists(script.Str(0)))
+                    Logger.LogFileNotFound(file, script);
+            }
+
+            // scene = [all,] ambient, <script>[, TRAFFIC_PRIORITY]
+            foreach (var scene in ini.GetSettings("Room_Info", "scene"))
+            {
+                string script = scene.values.Select(v => v.ToString().Trim()).FirstOrDefault(v => v.ToLower().EndsWith(".thn"));
+                if (script == null)
+                    Logger.LogInvalidValue(file, scene, "No script found!");
+                else if (!Checker.FileExists(script))
+                    Logger.LogFileNotFound(file, scene, script);
+            }
 
             foreach (var hotspot in ini.GetSettings("Hotspot"))
             {
@@ -120,6 +142,8 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
             bool gotSystem = false;
+            // The system at each map position, to find systems that share one
+            var systemPositions = new Dictionary<string, string>();
 
             foreach (var section in ini.sections)
             {
@@ -136,13 +160,47 @@ namespace FLScanIE
                         break;
                     case "system":
                         gotSystem = true;
-                        CheckSystemEntry(file, section);
+                        CheckSystemEntry(file, section, systemPositions);
                         break;
                     case "time":
                         break;
                     default:
                         Logger.WLog(string.Format("Unexpected section {0} in file {1}", section.sectionName, file));
                         break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks a file with the routes between all systems: Path = from, to, from, ..., to. Each system on the
+        /// route has to have a jump gate or hole to the next one.
+        /// </summary>
+        private static void CheckShortestPathFile(string file)
+        {
+            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+
+            foreach (var path in ini.GetSettings("SystemConnections", "Path"))
+            {
+                if (path.NumValues() < 3)
+                {
+                    Logger.LogArgCount(file, path, 3);
+                    continue;
+                }
+
+                string[] systems = path.values.Select(v => v.ToString().Trim().ToLower()).ToArray();
+                // An unknown system is reported once per path
+                string unknownSystem = systems.FirstOrDefault(sys => !SystemExists(sys));
+                if (unknownSystem != null)
+                {
+                    Logger.LogInvalidValue(file, path, "System doesn't exist!", unknownSystem);
+                    continue;
+                }
+
+                for (int i = 2; i < systems.Length - 1; i++)
+                {
+                    HashSet<string> connections;
+                    if (!systemConnections.TryGetValue(systems[i], out connections) || !connections.Contains(systems[i + 1]))
+                        Logger.LogInvalidValue(file, path, "There's no jump gate or hole between these systems!", systems[i] + " -> " + systems[i + 1]);
                 }
             }
         }
@@ -184,7 +242,7 @@ namespace FLScanIE
             }
         }
 
-        private static void CheckSystemEntry(string file, FLDataFile.Section section)
+        private static void CheckSystemEntry(string file, FLDataFile.Section section, Dictionary<string, string> systemPositions)
         {
             string nick = Util.TryGetStrSetting(section, "nickname");
             if (nick == null)
@@ -209,7 +267,21 @@ namespace FLScanIE
                             Logger.LogFileNotFound(file, setting);
                         break;
                     case "pos":
-                        Util.CheckNumberOfArgs(setting, file, 2);
+                        if (!Util.CheckNumberOfArgs(setting, file, 2))
+                            break;
+                        float x, y;
+                        if (!float.TryParse(setting.Str(0), NumberStyles.Float, CultureInfo.InvariantCulture, out x)
+                            || !float.TryParse(setting.Str(1), NumberStyles.Float, CultureInfo.InvariantCulture, out y))
+                        {
+                            Logger.LogInvalidValue(file, setting, "Has to be two numbers!");
+                            break;
+                        }
+                        string pos = x.ToString(CultureInfo.InvariantCulture) + ", " + y.ToString(CultureInfo.InvariantCulture);
+                        string otherSystem;
+                        if (systemPositions.TryGetValue(pos, out otherSystem))
+                            Logger.LogDublicateValue(file, setting, "Another system has the same position: " + otherSystem + "!", pos);
+                        else
+                            systemPositions[pos] = nick;
                         break;
                     case "msg_id_prefix":
                         //if(!AudioChecks.VoiceMsgExists(val)) // TODO
@@ -300,8 +372,13 @@ namespace FLScanIE
                                     if(!AudioChecks.SoundExists(val))
                                         Logger.LogInvalidValue(file, setting, "Sound not found!");
                                     break;
-                                case "faction":
-                                case "edge_fraction": // TODO depends on a new MissionChecks.cs
+                                case "faction": // Checked by MissionChecks, which needs a [FactionProps] of the faction
+                                case "edge_fraction":
+                                    break;
+                                case "faction_weight":
+                                case "reputation":
+                                    if (!FactionExists(val))
+                                        Logger.LogInvalidValue(file, setting, "Faction doesn't exist!", val);
                                     break;
                                 case "mission_type":
                                     if (val != "lawful" && val != "unlawful")
@@ -316,7 +393,7 @@ namespace FLScanIE
                         break;
                     case "systeminfo": // Updated 01/2024
                         string name = Util.TryGetStrSetting(section, "name");
-                        string local_fact = Util.TryGetStrSetting(section, "local_faction"); // TODO
+                        string local_fact = Util.TryGetStrSetting(section, "local_faction");
                         string rpopd = Util.TryGetStrSetting(section, "rpop_solar_detection");
                         string farclip = Util.TryGetStrSetting(section, "space_farclip");
 
@@ -324,6 +401,8 @@ namespace FLScanIE
                         //Logger.LogInvalidValue(file, section.GetSetting("name"), "Should equal system-nickname!");
                         if (name != null)
                             Logger.LogInvalidValue(file, section.GetSetting("name"), "Invalid line in file.");
+                        if (local_fact != null && !FactionExists(local_fact))
+                            Logger.LogInvalidValue(file, section.GetSetting("local_faction"), "Faction doesn't exist!");
                         if (rpopd != null)
                             if (rpopd.ToLower() != "false" && rpopd.ToLower() != "true")
                                 Logger.LogInvalidValue(file, section.GetSetting("rpop_solar_detection"), "Must be true or false.");
@@ -564,7 +643,10 @@ namespace FLScanIE
                                     if(!ZoneExists(sysnick, ring_zone))
                                         Logger.LogInvalidValue(file, setting, "Zone doesn't exist!", ring_zone);
                                     break;
-                                case "reputation": // TODO depends on a new MissionChecks.cs
+                                case "reputation":
+                                case "faction":
+                                    if (!FactionExists(val))
+                                        Logger.LogInvalidValue(file, setting, "Faction doesn't exist!");
                                     break;
                                 case "parent":
                                 case "prev_ring":
@@ -615,6 +697,10 @@ namespace FLScanIE
                         
                         if(o_prevRing == o_nextRing && o_prevRing != null)
                             Logger.LogInvalidValue(file, section.GetSetting("prev_ring"), "prev_ring equals next_ring!");
+                        if (nick != null && o_prevRing != null && o_prevRing.ToLower() == nick.ToLower())
+                            Logger.LogInvalidValue(file, section.GetSetting("prev_ring"), "The ring points to itself!");
+                        if (nick != null && o_nextRing != null && o_nextRing.ToLower() == nick.ToLower())
+                            Logger.LogInvalidValue(file, section.GetSetting("next_ring"), "The ring points to itself!");
                         break;
                     case "ambient": // TODO [Ambient] color 3 args
                         break;
@@ -775,6 +861,7 @@ asteroid_loot_commodity = commodity_gold*/
             var baseNicks = new Dictionary<string, List<string>>();
             var objectNicks = new Dictionary<string, Dictionary<string, List<string>>>();
             baseFiles = new Dictionary<string, string>();
+            systemConnections = new Dictionary<string, HashSet<string>>();
 
             foreach (var universeFile in universeFiles)
             {
@@ -894,6 +981,15 @@ asteroid_loot_commodity = commodity_gold*/
                         if (!objectNicks[system].ContainsKey(section.sectionName))
                             objectNicks[system][section.sectionName] = new List<string>();
                         objectNicks[system][section.sectionName].Add(nick.ToLower());
+
+                        // goto = system, object, effect
+                        string gotoSystem = section.sectionName == "object" ? Util.TryGetStrSetting(section, "goto") : null;
+                        if (gotoSystem != null)
+                        {
+                            if (!systemConnections.ContainsKey(system))
+                                systemConnections[system] = new HashSet<string>();
+                            systemConnections[system].Add(gotoSystem.Trim().ToLower());
+                        }
                         break;
 
                     case "field":
@@ -921,6 +1017,15 @@ asteroid_loot_commodity = commodity_gold*/
         {
             popType = popType.ToLower();
             return popTypes.Contains(popType) || factionNicks == null || factionNicks.Contains(popType);
+        }
+
+        /// <summary>
+        /// True if a faction ([Group] in initialworld.ini) with this nickname exists. If the factions are unknown
+        /// (initialworld.ini isn't present), every faction is accepted.
+        /// </summary>
+        public static bool FactionExists(string nick)
+        {
+            return factionNicks == null || factionNicks.Contains(nick.ToLower());
         }
 
         public static bool SystemExists(string nick)

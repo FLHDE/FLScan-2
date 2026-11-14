@@ -22,6 +22,7 @@ KEPT_KEYS = {
     'category', 'ship',                        # [Good]
     'base', 'marketgood',                      # [BaseGood]
     'system', 'file',                          # universe.ini [Base] and [System]
+    'goto',                                    # jump gates and holes of system objects (shortest path files)
     'msg',                                     # voices
     'room', 'prop', 'cart',                    # petaldb.ini [ObjectTable]
     'member',                                  # shipclasses.ini
