@@ -104,6 +104,12 @@ namespace FLScanIE
                     case "empathy_rate": // empathy_rate = faction, rate
                         CheckFaction(file, setting);
                         break;
+                    case "event": // event = name, rate. Content.dll ignores the line if it doesn't know the name.
+                        string eventName = setting.Str(0).Trim().ToLower();
+                        if (eventName != "object_destruction" && eventName != "random_mission_success"
+                            && eventName != "random_mission_failure" && eventName != "random_mission_abortion")
+                            Logger.LogInvalidValue(file, setting, "Has to be object_destruction, random_mission_success, random_mission_failure or random_mission_abortion! The game ignores the line otherwise.");
+                        break;
                 }
             }
         }

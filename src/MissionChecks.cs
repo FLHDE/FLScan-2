@@ -243,6 +243,17 @@ namespace FLScanIE
                         if (!LoadoutChecks.LoadoutExists(set.Str(0)))
                             Logger.LogInvalidValue(npcShipPath, set, "Loadout doesn't exist!");
                     }
+                    else if (set.settingName.ToLowerInvariant() == "pilot")
+                    {
+                        if (!MissionFileChecks.PilotExists(set.Str(0)))
+                            Logger.LogInvalidValue(npcShipPath, set, "Pilot doesn't exist! The ship gets the default AI personality.");
+                    }
+                    else if (set.settingName.ToLowerInvariant() == "state_graph")
+                    {
+                        // Content.dll looks it up with pub::StateGraph::get_state_graph(name, LEADER)
+                        if (!UniverseChecks.LeaderStateGraphExists(set.Str(0)))
+                            Logger.LogInvalidValue(npcShipPath, set, "Has to be a leader state graph from AI\\state_graph.db!");
+                    }
                 }
                 if (mission == null)
                 {
@@ -302,6 +313,55 @@ namespace FLScanIE
             }
         }
 
+        /// <summary>
+        /// Checks the keys of a [FactionProps] that only Content.dll uses. Returns true if the key is one of them.
+        /// </summary>
+        static bool CheckFactionPropsSetting(string fileName, FLDataFile.Setting set)
+        {
+            switch (set.settingName.ToLowerInvariant())
+            {
+                case "scan_for_cargo": // good, level (0, 1 or 2)
+                    if (!EquipmentChecks.GoodExists(set.Str(0)))
+                        Logger.LogInvalidValue(fileName, set, "Good doesn't exist!");
+                    int level;
+                    if (set.NumValues() > 1 && (!int.TryParse(set.Str(1), out level) || level < 0 || level > 2))
+                        Logger.LogInvalidValue(fileName, set, "Has to be 0, 1 or 2! The game uses 0 otherwise.", set.Str(1));
+                    return true;
+                case "mc_costume":
+                    if (!CharacterChecks.CostumeExists(set.Str(0)))
+                        Logger.LogInvalidValue(fileName, set, "Costume doesn't exist!");
+                    return true;
+                case "space_costume": // head, body, accessories
+                    var parts = set.values.Select(v => v.ToString().Trim()).TakeWhile(v => v != "").ToArray();
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        if (!(i < 2 ? CharacterChecks.BodypartExists(parts[i], i == 0 ? "head" : "body") : CharacterChecks.BodypartExists(parts[i], "accessory")))
+                            Logger.LogInvalidValue(fileName, set, i == 0 ? "Head doesn't exist!" : i == 1 ? "Body doesn't exist!" : "Accessory doesn't exist!", parts[i]);
+                    }
+                    if (parts.Length < 2)
+                        Logger.LogArgCount(fileName, set, 2);
+                    return true;
+                case "voice":
+                    if (!AudioChecks.VoiceExists(set.Str(0)))
+                        Logger.LogInvalidValue(fileName, set, "Voice doesn't exist!");
+                    return true;
+                case "jump_preference":
+                    // Compared case-sensitively; anything else means any
+                    if (set.Str(0) != "jumpgate" && set.Str(0) != "jumphole" && set.Str(0) != "any")
+                        Logger.LogInvalidValue(fileName, set, "Has to be jumpgate, jumphole or any (lowercase)! The game uses any otherwise.", LogLevel.warning);
+                    return true;
+                case "legality":
+                    if (set.Str(0).ToLowerInvariant() != "lawful" && set.Str(0).ToLowerInvariant() != "unlawful")
+                        Logger.LogInvalidValue(fileName, set, "Has to be lawful or unlawful! The game ignores it otherwise.");
+                    return true;
+                case "nickname_plurality":
+                    if (set.Str(0).ToLowerInvariant() != "singular" && set.Str(0).ToLowerInvariant() != "plural")
+                        Logger.LogInvalidValue(fileName, set, "Has to be singular or plural! The game ignores it otherwise.");
+                    return true;
+            }
+            return false;
+        }
+
         static void LoadFactionProps()
         {
             Logger.ILog("Checking faction_prop.ini");
@@ -341,6 +401,9 @@ namespace FLScanIE
 
                         if (!formations.ContainsKey(formation))
                             Logger.LogInvalidValue(fileName, set, "Formation not found!");
+                    }
+                    else if (CheckFactionPropsSetting(fileName, set))
+                    {
                     }
                     else if (set.settingName == "npc_ship")
                     {
