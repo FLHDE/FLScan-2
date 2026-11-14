@@ -87,11 +87,23 @@ namespace FLScanIE.Util_Functions
             }
         }
 
+        /// <summary>
+        /// Creates a model of which only the hardpoints are known (a vanilla model that isn't present).
+        /// </summary>
+        public static UtfFile FromHardpoints(string filePath, IEnumerable<string> hardpoints)
+        {
+            var utf = new UtfFile();
+            utf.filePath = filePath;
+            utf.hardpoints.AddRange(hardpoints);
+            return utf;
+        }
+
+        private UtfFile()
+        {
+        }
+
         public bool HardpointExists(string hp)
         {
-            if (Checker.AssumeVanillaFilesExist && filePath == string.Empty)
-                return true;
-
             hp = hp.ToLower();
             foreach (var hardpoint in hardpoints)
             {

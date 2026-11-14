@@ -68,16 +68,15 @@ namespace FLScanIE
         static HashSet<string> reportedEncounterErrors = new HashSet<string>();
 
         /// <summary>
-        /// Loads an ini file (relative to DATA). Returns null if it doesn't exist, logging an error unless it is a
-        /// vanilla file that's assumed to exist (those can't be checked).
+        /// Loads a definitions ini file (relative to DATA). A vanilla file that isn't present is read from the
+        /// vanilla definitions. Returns null if it doesn't exist, logging an error unless it's a vanilla file.
         /// </summary>
         static FLDataFile LoadIni(string relPath)
         {
-            if (Checker.FileExistsOnDisk(relPath))
-                return new FLDataFile(Path.Combine(Checker.flDataPath, relPath), true);
-            if (!Checker.FileExists(relPath))
+            FLDataFile ini = Checker.LoadIni(relPath);
+            if (ini == null && !Checker.FileExists(relPath))
                 Logger.ELog("File not found: " + relPath);
-            return null;
+            return ini;
         }
 
         /// <summary>

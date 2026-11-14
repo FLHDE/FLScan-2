@@ -173,7 +173,10 @@ namespace FLScanIE
 
             foreach (var solarFile in SolarChecks.solarFiles)
             {
-                FLDataFile flDataFile = new FLDataFile(Path.Combine(Checker.flDataPath, solarFile), true);
+                // Missing files are reported by Checker.Parse
+                FLDataFile flDataFile = Checker.LoadIni(solarFile);
+                if (flDataFile == null)
+                    continue;
 
                 foreach (var section in flDataFile.sections)
                 {
@@ -210,11 +213,13 @@ namespace FLScanIE
             // stararch.ini isn't referenced by freelancer.ini, but it's always loaded by the game.
             SolarChecks.starFiles = Checker.flIni.GetSettings("Data", "stars").Select(s => s.Str(0))
                 .Union(new[] { "solar\\stararch.ini" }, StringComparer.OrdinalIgnoreCase)
-                .Where(Checker.FileExistsOnDisk) // vanilla files that aren't present can't be parsed
                 .ToArray();
             foreach (var starIni in SolarChecks.starFiles)
             {
-                FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, starIni), true);
+                // Missing files from freelancer.ini are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(starIni);
+                if (ini == null)
+                    continue;
 
                 starNicknames.AddRange(ini.GetSettings("star", "nickname").Select(s => s.Str(0)));
                 star_GlowNicknames.AddRange(ini.GetSettings("star_glow", "nickname").Select(s => s.Str(0)));

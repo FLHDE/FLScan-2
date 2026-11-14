@@ -295,7 +295,10 @@ namespace FLScanIE
 
             foreach (var shipFile in ShipChecks.shipFiles)
             {
-                FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, shipFile), true);
+                // Missing files are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(shipFile);
+                if (ini == null)
+                    continue;
 
                 foreach (var section in ini.sections)
                 {

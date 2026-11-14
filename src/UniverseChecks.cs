@@ -789,9 +789,9 @@ asteroid_loot_commodity = commodity_gold*/
 
             // initialworld.ini isn't referenced by freelancer.ini, but it's always loaded by the game
             factionNicks = null;
-            if (Checker.FileExistsOnDisk("initialworld.ini"))
+            FLDataFile initialWorld = Checker.LoadIni("initialworld.ini");
+            if (initialWorld != null)
             {
-                FLDataFile initialWorld = new FLDataFile(Path.Combine(Checker.flDataPath, "initialworld.ini"), true);
                 factionNicks = new HashSet<string>(initialWorld.GetSettings("Group", "nickname")
                     .Where(s => s.NumValues() > 0).Select(s => s.Str(0).ToLower()));
             }
@@ -801,7 +801,10 @@ asteroid_loot_commodity = commodity_gold*/
 
         private static void ParseUniverseFile(string file, ref List<string> systemNicks, ref Dictionary<string, List<string>> baseNicks, ref Dictionary<string, Dictionary<string, List<string>>> objectNicks)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file);
+            if (ini == null)
+                return;
 
             foreach (var section in ini.sections)
             {
@@ -869,9 +872,9 @@ asteroid_loot_commodity = commodity_gold*/
         private static void ParseSystemFile(string file, string system, ref Dictionary<string, Dictionary<string, List<string>>> objectNicks)
         {
             // Missing files are reported by CheckSystemEntry
-            if (!Checker.FileExistsOnDisk(Path.Combine("universe", file)))
+            FLDataFile ini = Checker.LoadIni(Path.Combine("universe", file));
+            if (ini == null)
                 return;
-            FLDataFile ini = new FLDataFile(Path.Combine(Path.Combine(Checker.flDataPath, "universe"), file), true);
 
             foreach (var section in ini.sections)
             {

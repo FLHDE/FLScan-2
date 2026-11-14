@@ -58,13 +58,19 @@ namespace FLScanIE
 
         private static void ParseFontFile(string file, ref List<string> nicknames)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file, false);
+            if (ini == null)
+                return;
             nicknames.AddRange(ini.GetSettings("TrueType", "nickname").Select(s => s.Str(0).ToLower()));
         }
 
         private static void ParseStyleFile(string file, ref List<string> nicknames)
         {
-            FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), false);
+            // Missing files are reported by Checker.Parse
+            FLDataFile ini = Checker.LoadIni(file, false);
+            if (ini == null)
+                return;
             nicknames.AddRange(ini.GetSettings("Style", "name").Select(s => s.Str(0).ToLower()));
         }
 
