@@ -161,10 +161,38 @@ namespace FLScanIE
 
         private const string UsesFirst = "The game uses the first definition, at {1}";
 
+        /// <summary>
+        /// What content.dll does with a duplicate in a mission file, by section type (lowercase), or null if that
+        /// isn't known.
+        /// </summary>
+        private static string MissionDuplicateUsage(string type)
+        {
+            switch (type)
+            {
+                case "trigger": // Skipped when the nickname is known (FUN_06eb84c0)
+                case "npc": // std::map::insert (FUN_06ed04c0)
+                case "objlist": // std::map::insert (FUN_06f1e9f0)
+                case "metabehavior":
+                case "dialog": // std::map::insert (FUN_06f1f2a0)
+                case "msnloot": // Act_SpawnLoot spawns the first match
+                case "msnship": // Found by searching the list of them from the start
+                case "msnformation":
+                    return UsesFirst;
+                case "msnsolar": // SpawnMissionSolar (FUN_06f171e0) spawns every match; lookups by name find the first
+                    return "Act_SpawnSolar spawns both, but the game finds the first one, at {1}, when other actions refer to it";
+                case "msnrandenc": // Act_EnableEnc and Act_DisableEnc walk the whole list
+                    return "The game keeps both, and Act_EnableEnc and Act_DisableEnc change both. The first one is at {1}";
+                case "nnobjective": // All are added to the list; FUN_06f1b310 sets the state of every match, FUN_06f1b260 shows or hides the first
+                    return "The game keeps both: Act_SetNNState changes both, but Act_SetNNObj and Act_SetNNHidden only show or hide the first one, at {1}";
+            }
+            return null;
+        }
+
         private static void CheckDuplicates()
         {
-            // common.dll keeps the first equipment and good, and a later loadout replaces the items of the earlier one.
-            // The client redefines a sound with a later one (and warns).
+            // common.dll keeps the first equipment, good and ship, redefines the first solar with a later one, and a
+            // later loadout replaces the items of the earlier one. The client redefines a sound with a later one (and
+            // warns).
             CheckDuplicates("equipment", Load(DataFiles("equipment")), null, false, UsesFirst);
             CheckDuplicates("good", Load(DataFiles("goods")), new[] { "good" }, false, UsesFirst);
             CheckDuplicates("loadout", Load(DataFiles("loadouts")), new[] { "loadout" }, false, "The game replaces the loadout at {1} with this one");
@@ -194,9 +222,7 @@ namespace FLScanIE
             {
                 string file = @"MISSIONS\" + mission + @"\" + mission + ".ini";
                 if (Checker.FileExistsOnDisk(file))
-                    // content.dll keeps the first [ObjList] (std::map::insert) and finds MsnShips and MsnFormations
-                    // by searching its list of them from the start, so the first definition is used
-                    CheckDuplicates("mission", Load(new[] { file }), null, true, UsesFirst);
+                    CheckDuplicatesByType("mission", Load(new[] { file }), null, true, MissionDuplicateUsage);
             }
         }
 
@@ -207,6 +233,14 @@ namespace FLScanIE
         /// what the game does with the duplicate ({1} is where the first one is), or is null if that isn't known.
         /// </summary>
         private static void CheckDuplicates(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, string usage)
+        {
+            CheckDuplicatesByType(what, files, sectionNames, perSectionType, type => usage);
+        }
+
+        /// <summary>
+        /// Like the other CheckDuplicates, but usage gives the message for each section type (lowercase).
+        /// </summary>
+        private static void CheckDuplicatesByType(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, Func<string, string> usage)
         {
             var first = new Dictionary<string, KeyValuePair<IniFile, FLDataFile.Section>>();
             foreach (IniFile file in files)
@@ -232,7 +266,7 @@ namespace FLScanIE
                     if (!file.OnDisk)
                         continue; // Duplicates in vanilla files that aren't present can't be fixed by the mod
 
-                    string message = string.Format("Duplicate {0} nickname! " + (usage ?? "Also defined at {1}"), what, DescribeLocation(original.Key, Util.TryGetSetting(original.Value, "nickname")));
+                    string message = string.Format("Duplicate {0} nickname! " + (usage(type) ?? "Also defined at {1}"), what, DescribeLocation(original.Key, Util.TryGetSetting(original.Value, "nickname")));
                     if (original.Key.OnDisk && SameSettings(original.Value, section))
                         Logger.LogDublicateValue(file.Path, nickSetting, message + " (an identical copy)", LogLevel.warning);
                     else
