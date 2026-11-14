@@ -38,6 +38,8 @@ namespace FLScanIE
                 }
                 finally
                 {
+                    // Make sure all pending log entries are written before the log file gets closed.
+                    Logger.WaitForEnd();
                     try { fs.Close(); }
                     catch { }
                 }
@@ -171,14 +173,22 @@ namespace FLScanIE
             if (options.ContainsKey("--flpath"))
             {
                 Logger.ILog("Scan started");
-                bool retn = Checker.Parse(options["--flpath"]);
-                if (!retn)
-                    return;
-                Checker.Check();
-                Logger.ILog("Scan complete");
+                if (Checker.Parse(options["--flpath"]))
+                {
+                    Checker.Check();
+                    Logger.ILog("Scan complete");
+                }
+                else
+                {
+                    // Parsing failed, so nothing was checked. This must never count as a successful scan.
+                    Logger.FLog("Scan aborted");
+                }
             }
             else
+            {
                 Console.WriteLine("Missing --flpath argument!");
+                Environment.ExitCode = 1;
+            }
 
             Logger.WaitForEnd();
             if (options.ContainsKey("--log-html"))

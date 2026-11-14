@@ -50,13 +50,21 @@ namespace FLScanIE
 
         static Checker()
         {
-            confIni = new FLDataFile("conf.ini", false);
+            confIni = new FLDataFile(GetAppFilePath("conf.ini"), false);
+        }
+
+        /// <summary>
+        /// Returns the path of a file that is shipped next to the executable, independent of the working directory.
+        /// </summary>
+        private static string GetAppFilePath(string fileName)
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
         }
 
         public static bool Parse(string flPath)
         {
-            if (assumeVanillaFilesExist)
-                ParseVanillaFiles();
+            if (assumeVanillaFilesExist && !ParseVanillaFiles())
+                return false;
 
             string flExePath = Path.Combine(flPath, "EXE");
             try
@@ -121,24 +129,45 @@ namespace FLScanIE
             return (Checks & check) != Checks.None;
         }
 
-        private static void ParseVanillaFiles()
+        private static bool ParseVanillaFiles()
         {
-            const string vanillaFilesPath = "vanilla_files.txt";
+            string vanillaFilesPath = GetAppFilePath("vanilla_files.txt");
             if (!File.Exists(vanillaFilesPath))
-                return;
+            {
+                Logger.ELog("Vanilla file list not found: " + vanillaFilesPath);
+                return false;
+            }
 
             vanillaFiles = new HashSet<string>();
 
             string[] files = File.ReadAllLines(vanillaFilesPath);
             foreach (string file in files)
             {
-                vanillaFiles.Add(file.ToLowerInvariant());
+                vanillaFiles.Add(file.Trim().ToLowerInvariant());
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// True if the file (relative to the DATA folder) is physically present. Unlike <see cref="FileExists"/>,
+        /// this doesn't count vanilla files that are only assumed to exist, so use it before opening a file.
+        /// </summary>
+        public static bool FileExistsOnDisk(string relFilePath)
+        {
+            try
+            {
+                return File.Exists(Path.Combine(flDataPath, relFilePath));
+            }
+            catch (ArgumentException)
+            {
+                // The path contains invalid characters, so it can't exist
+                return false;
             }
         }
 
         public static bool FileExists(string relFilePath)
         {
-            return File.Exists(Path.Combine(flDataPath, relFilePath)) || HasVanillaFile(relFilePath);
+            return FileExistsOnDisk(relFilePath) || HasVanillaFile(relFilePath);
         }
 
         internal static bool HasVanillaFile(string relFilePath)

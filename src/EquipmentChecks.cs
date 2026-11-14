@@ -104,7 +104,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 if (hasLootAppearance.Contains(cat))
                 {
                     string app = Util.TryGetStrSetting(section, "loot_appearance");
-                    if (app != null && !equipNicks["lootcrate"].Contains(app))
+                    if (app != null && !EquipExists(app, "lootcrate"))
                         Logger.LogInvalidValue(file, section.GetSetting("loot_appearance"), "LootCrate doesn't exist!");
                 }
                 if (hasSeparationExplosion.Contains(cat))
@@ -128,7 +128,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 if (hasHpChild.Contains(cat))
                 {
                     string hp_child = Util.TryGetStrSetting(section, "hp_child");
-                    if (hp_child != null && !Checker.DisableUTF && equipUtf[cat].ContainsKey(nick) && !equipUtf[cat][nick].HardpointExists(hp_child))
+                    if (hp_child != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(hp_child))
                         Logger.LogHardpoint(file, section.GetSetting("hp_child"));
                 }
 
@@ -165,7 +165,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         break;
                     case "commodity":
                         string comm_podApp = Util.TryGetStrSetting(section, "pod_appearance");
-                        if (comm_podApp != null && !equipNicks["cargopod"].Contains(comm_podApp.ToLower()))
+                        if (comm_podApp != null && !EquipExists(comm_podApp, "cargopod"))
                             Logger.LogInvalidValue(file, section.GetSetting("pod_appearance"), "CargoPod doesn't exist!");
                         break;
                     case "shieldgenerator":
@@ -205,7 +205,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string thr_hp_particles = Util.TryGetStrSetting(section, "hp_particles");
                         string thr_particles = Util.TryGetStrSetting(section, "particles");
 
-                        if (thr_hp_particles != null && !Checker.DisableUTF && equipUtf[cat].ContainsKey(nick) && !equipUtf[cat][nick].HardpointExists(thr_hp_particles))
+                        if (thr_hp_particles != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(thr_hp_particles))
                             Logger.LogHardpoint(file, section.GetSetting("hp_particles"));
                         if (thr_particles != null && !FXChecks.EffectExists(thr_particles))
                             Logger.LogInvalidValue(file, section.GetSetting("particles"), "Effect doesn't exist!");
@@ -213,6 +213,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     case "engine":
                         foreach (var setting in section.settings)
                         {
+                            if (setting.NumValues() == 0)
+                                continue;
                             string val = setting.Str(0);
                             switch (setting.settingName)
                             {
@@ -240,7 +242,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         break;
                     case "light":
                         string li_inherit = Util.TryGetStrSetting(section, "inherit");
-                        if (li_inherit != null && !equipNicks["light"].Contains(li_inherit.ToLower()))
+                        if (li_inherit != null && !EquipExists(li_inherit, "light"))
                             Logger.LogInvalidValue(file, section.GetSetting("inherit"), "Light not found!");
                         break;
                     case "countermeasuredropper":
@@ -250,7 +252,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         if (cmd_particle != null && !FXChecks.EffectExists(cmd_particle))
                             Logger.LogInvalidValue(file, section.GetSetting("flash_particle_name"), "Effect not found!");
-                        if (cmd_archtype != null && !equipNicks["countermeasure"].Contains(cmd_archtype.ToLower()))
+                        if (cmd_archtype != null && !EquipExists(cmd_archtype, "countermeasure"))
                             Logger.LogInvalidValue(file, section.GetSetting("projectile_archetype"), "CounterMeasure not found!");
                         break;
                     case "tractor":
@@ -292,8 +294,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("flash_particle_name"), "Effect doesn't exist!");
                         if(gun_hpType != null && !HpTypeExists(gun_hpType))
                             Logger.LogInvalidValue(file, section.GetSetting("hp_gun_type"), "Invalid hardpoint-type!");
-                        if (gun_projArch != null && !equipNicks["munition"].Contains(gun_projArch.ToLower()))
-                            Logger.LogInvalidValue(file, section.GetSetting("dry_fire_sound"), "Munition doesn't exist!");
+                        if (gun_projArch != null && !EquipExists(gun_projArch, "munition"))
+                            Logger.LogInvalidValue(file, section.GetSetting("projectile_archetype"), "Munition doesn't exist!");
 
                         break;
                     case "mine":
@@ -311,8 +313,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         if (md_snd != null && !AudioChecks.SoundExists(md_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("dry_fire_sound"), "Sound doesn't exist!");
-                        if (md_projArch != null && !equipNicks["mine"].Contains(md_projArch.ToLower()))
-                            Logger.LogInvalidValue(file, section.GetSetting("dry_fire_sound"), "Mine doesn't exist!");
+                        if (md_projArch != null && !EquipExists(md_projArch, "mine"))
+                            Logger.LogInvalidValue(file, section.GetSetting("projectile_archetype"), "Mine doesn't exist!");
                         break;
                     case "munition":
                         string mun_const_eff = Util.TryGetStrSetting(section, "const_effect");
@@ -328,7 +330,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("munition_hit_effect"), "Effect not found!");
                         if(mun_hp_type != null && !HpTypeExists(mun_hp_type))
                             Logger.LogInvalidValue(file, section.GetSetting("hp_type"), "Invalid hardpoint type!");
-                        if(mun_motor != null && !equipNicks["motor"].Contains(mun_motor.ToLower()))
+                        if(mun_motor != null && !EquipExists(mun_motor, "motor"))
                             Logger.LogInvalidValue(file, section.GetSetting("motor"), "Motor doesn't exist!");
                         if(mun_snd != null && !AudioChecks.SoundExists(mun_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("one_shot_sound"), "Sound doesn't exist!");
@@ -372,7 +374,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         }
                         else
                         {
-                            Logger.LogSettingNotFound(file, section.settings.Count == 0 ? "0" : section.settings[0].LineNumber.ToString(), "Good", "nickname");
+                            Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), "Good", "nickname");
                             break;
                         }
 
@@ -395,13 +397,18 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         if (category == null)
                         {
-                            Logger.LogSettingNotFound(file, section.settings[0].LineNumber, section.sectionName, "category");
-                            return;
+                            Logger.LogSettingNotFound(file, nick, section.sectionName, "category");
+                            break; // continue with the next section
                         }
 
                         switch (category.ToLower())
                         {
                             case "ship":
+                                if (hull == null)
+                                {
+                                    Logger.LogSettingNotFound(file, nick, section.sectionName, "hull");
+                                    break;
+                                }
                                 hull = hull.ToLower();
                                 if (!shipHulls.ContainsKey(hull))
                                 {
@@ -448,8 +455,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             case "commodity":
                                 break;
                             case "shiphull":
-                                if (!ShipChecks.ShipExists(ship))
-                                    Logger.LogInvalidValue(file, section.GetSetting("category"), "Ship doesn't exist!");
+                                if (ship == null)
+                                    Logger.LogSettingNotFound(file, nick, section.sectionName, "ship");
+                                else if (!ShipChecks.ShipExists(ship))
+                                    Logger.LogInvalidValue(file, section.GetSetting("ship"), "Ship doesn't exist!");
                                 break;
                         }
 
@@ -480,8 +489,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 switch (section.sectionName.ToLower())
                 {
                     case "basegood":
-                        string Base = section.GetSetting("base").Str(0);
-                        
+                        string Base = Util.TryGetStrSetting(section, "base");
+                        if (Base == null)
+                        {
+                            Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), "BaseGood", "base");
+                            break;
+                        }
+
                         if(!UniverseChecks.BaseExists(Base))
                             Logger.LogInvalidValue(file, section.GetSetting("base"), "Base doesn't exist!");
 
@@ -618,6 +632,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             equipUtf[cat] = new Dictionary<string, UtfFile>();
 
                         var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", "da_archetype", false);
+                        if (nickUtfTuple.Nick == null)
+                            break;
                         nickUtfTuple.Nick = nickUtfTuple.Nick.ToLower();
 
                         equipNicks[cat].Add(nickUtfTuple.Nick);
@@ -628,7 +644,11 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         }
                         break;
                     case "explosion":
-                        explosionNicks.Add(section.GetSetting("nickname").Str(0).ToLower());
+                        string explNick = Util.TryGetStrSetting(section, "nickname");
+                        if (explNick == null)
+                            Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), section.sectionName, "nickname");
+                        else
+                            explosionNicks.Add(explNick.ToLower());
                         break;
                     case "lod":
                         break;
@@ -644,14 +664,19 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 switch (section.sectionName.ToLower())
                 {
                     case "good":
-                        string nick = section.GetSetting("nickname").Str(0).ToLower();
+                        string nick = Util.TryGetStrSetting(section, "nickname");
+                        if (nick == null)
+                            break; // Reported by CheckGoodFile
+                        nick = nick.ToLower();
                         goodNicknames.Add(nick);
 
                         string category = Util.TryGetStrSetting(section, "category");
                         if (category == "shiphull")
                         {
                             string ship = Util.TryGetStrSetting(section, "ship");
-                            shipHulls.Add(nick.ToLower(), ship.ToLower());
+                            if (ship == null)
+                                break; // Reported by CheckGoodFile
+                            Util.AddUnique(shipHulls, nick, ship.ToLower(), file, section, "good");
                         }
                         break;
                 }
@@ -668,7 +693,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 switch (section.sectionName.ToLower())
                 {
                     case "basegood":
-                        string Base = section.GetSetting("base").Str(0);
+                        string Base = Util.TryGetStrSetting(section, "base");
+                        if (Base == null)
+                            break; // Reported by CheckMarketFile
                         string[] MarketGoods = section.GetSettings("MarketGood").Select(s => s.Str(0).ToLower()).ToArray();
                         if (marketEntries.ContainsKey(Base))
                             marketEntries[Base] = marketEntries[Base].Union(MarketGoods).ToArray();
@@ -688,6 +715,21 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     return nicks.Key;
             }
             return null;
+        }
+
+        /// <summary>
+        /// True if equipment with this nickname exists in the given (lowercase) category, e.g. "munition".
+        /// </summary>
+        public static bool EquipExists(string nick, string category)
+        {
+            string[] nicks;
+            return equipNicks.TryGetValue(category, out nicks) && nicks.Contains(nick.ToLower());
+        }
+
+        private static bool HasEquipUtf(string category, string nick)
+        {
+            Dictionary<string, UtfFile> utfs;
+            return nick != null && !Checker.DisableUTF && equipUtf.TryGetValue(category, out utfs) && utfs.ContainsKey(nick);
         }
 
         public static bool EquipExists(string nick)

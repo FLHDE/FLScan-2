@@ -10,10 +10,12 @@ namespace FLScanIE.Logging
     {
         public DublicateValueLogEntry(string message, string file, FLDataFile.Setting setting, LogLevel level) : base(message, file, setting)
         {
+            Loglevel = level;
         }
 
         public DublicateValueLogEntry(string message, string file, FLDataFile.Setting setting, LogLevel level, string foundValue) : base(message, file, setting, foundValue)
         {
+            Loglevel = level;
         }
     }
 }

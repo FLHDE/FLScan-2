@@ -43,7 +43,10 @@ namespace FLScanIE
                     case "righthand":
                     case "lefthand":
                     case "accessory":
-                        string nick = section.GetSetting("nickname").Str(0).ToLower();
+                        string nick = Util.TryGetStrSetting(section, "nickname");
+                        if (nick == null)
+                            break; // Already reported while parsing
+                        nick = nick.ToLower();
                         foreach (var setting in section.settings)
                         {
                             switch (setting.settingName)
@@ -138,7 +141,13 @@ namespace FLScanIE
             {
                 if(section.sectionName.ToLower() != "costume")
                     continue;
-                costumeNicks.Add(section.GetSetting("nickname").Str(0).ToLower());
+                string nick = Util.TryGetStrSetting(section, "nickname");
+                if (nick == null)
+                {
+                    Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), section.sectionName, "nickname");
+                    continue;
+                }
+                costumeNicks.Add(nick.ToLower());
             }
         }
 
@@ -157,6 +166,8 @@ namespace FLScanIE
                     case "lefthand":
                     case "accessory":
                         var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", "mesh");
+                        if (nickUtfTuple.Nick == null)
+                            break;
                         nickUtfTuple.Nick = nickUtfTuple.Nick.ToLower();
 
                         if(!bodyparts.ContainsKey(key))
@@ -165,7 +176,7 @@ namespace FLScanIE
                         if (!bodypartUTF.ContainsKey(key))
                             bodypartUTF[key] = new Dictionary<string, UtfFile>();
                         if (nickUtfTuple.UtfFile != null)
-                            bodypartUTF[key].Add(nickUtfTuple.Nick, nickUtfTuple.UtfFile);
+                            Util.AddUnique(bodypartUTF[key], nickUtfTuple.Nick, nickUtfTuple.UtfFile, file, section, section.sectionName);
                         break;
 
                     case "petalanimations":

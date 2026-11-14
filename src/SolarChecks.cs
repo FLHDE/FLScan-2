@@ -65,8 +65,11 @@ namespace FLScanIE
                             Logger.LogInvalidValue(file, solar, "Explosion doesn't exist!");
                         break;
                     case "surface_hit_effects":
-                        if (!FXChecks.EffectExists(solar.Str(1)))
-                            Logger.LogInvalidValue(file, solar, "Effect doesn't exist!");
+                        if (!Util.CheckNumberOfArgs(solar, file, 2, 3, 4))
+                            break;
+                        for (int i = 1; i < solar.NumValues(); i++)
+                            if (!FXChecks.EffectExists(solar.Str(i)))
+                                Logger.LogInvalidValue(file, solar, "Effect doesn't exist!", solar.Str(i));
                         break;
                 }
             }
@@ -91,8 +94,11 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
-            if (!Checker.FileExists(ini.GetSetting("Texture", "file").Str(0)))
-                Logger.LogFileNotFound(file, ini.GetSetting("Texture", "file"));
+            foreach (var texFile in ini.GetSettings("Texture", "file"))
+            {
+                if (!Checker.FileExists(texFile.Str(0)))
+                    Logger.LogFileNotFound(file, texFile);
+            }
 
             string[] shapes = ini.GetSettings("Texture", "tex_shape").Select(s => s.Str(0)).ToArray();
 
@@ -174,6 +180,13 @@ namespace FLScanIE
                     {
                         case "Solar":
                             Util.NickUtfTuple retn = Util.ParseNickUTF(Checker.flDataPath, solarFile, section);
+                            if (retn.Nick == null)
+                                break;
+                            if (solarUTF.ContainsKey(retn.Nick))
+                            {
+                                Logger.LogDublicateValue(solarFile, section.GetSetting("nickname"), "Duplicate solar nickname!");
+                                break;
+                            }
                             solarNicknames.Add(retn.Nick);
                             solarUTF.Add(retn.Nick, retn.UtfFile);
                             break;
@@ -193,8 +206,11 @@ namespace FLScanIE
             List<string> star_lensGlowNicknames = new List<string>();
             List<string> star_spineNicknames = new List<string>();
 
+            // stararch.ini isn't referenced by freelancer.ini, but it's always loaded by the game.
             SolarChecks.starFiles = Checker.flIni.GetSettings("Data", "stars").Select(s => s.Str(0))
-                .Union(new List<string> { Checker.flDataPath + "\\SOLAR\\stararch.ini" }).ToArray();
+                .Union(new[] { "solar\\stararch.ini" }, StringComparer.OrdinalIgnoreCase)
+                .Where(Checker.FileExistsOnDisk) // vanilla files that aren't present can't be parsed
+                .ToArray();
             foreach (var starIni in SolarChecks.starFiles)
             {
                 FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, starIni), true);
