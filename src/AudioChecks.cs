@@ -29,14 +29,11 @@ namespace FLScanIE
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
 
-            var fuseEffects = ini.GetSettings("Sound", "file");
-
-            foreach (var fuseEffect in fuseEffects)
+            foreach (var soundFile in ini.GetSettings("Sound", "file"))
             {
-                if (!Checker.FileExists(Path.DirectorySeparatorChar + fuseEffect.Str(0)))
-                {
-                    Logger.LogFileNotFound(file, fuseEffect);
-                }   
+                // The path is relative to DATA. A leading separator would make it relative to the drive root.
+                if (soundFile.NumValues() > 0 && !Checker.FileExists(soundFile.Str(0).TrimStart('\\', '/')))
+                    Logger.LogFileNotFound(file, soundFile);
             }
         }
 

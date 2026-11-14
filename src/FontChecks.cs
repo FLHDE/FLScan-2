@@ -25,11 +25,13 @@ namespace FLScanIE
         private static void CheckStyleFile(string file)
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
-            string[] fonts = ini.GetSettings("TrueType", "font").Select(s => s.Str(0)).ToArray();
+            // Font names are case-insensitive
+            var fonts = new HashSet<string>(ini.GetSettings("TrueType", "font").Where(s => s.NumValues() > 0)
+                .Select(s => s.Str(0)), StringComparer.OrdinalIgnoreCase);
 
             foreach (var setting in ini.GetSettings("Style", "font"))
             {
-                if(!fonts.Contains(setting.Str(0)))
+                if (setting.NumValues() > 0 && !fonts.Contains(setting.Str(0)))
                     Logger.LogInvalidValue(file, setting, "Font not defined in [TrueType]");
             }
         }
@@ -53,6 +55,9 @@ namespace FLScanIE
             {
                 ParseStyleFile(styleFile, ref styleNicknames);
             }
+
+            FontChecks.fontNicknames = fontNicknames.ToArray();
+            FontChecks.styleNicknames = styleNicknames.ToArray();
             Logger.ILog("Finished Font-Folder");
         }
 

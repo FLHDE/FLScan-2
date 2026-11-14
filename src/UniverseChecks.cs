@@ -526,7 +526,7 @@ namespace FLScanIE
                                     uint ids;
                                     if (!uint.TryParse(val, out ids))
                                         Logger.LogInvalidValue(file, setting, "Has to be a number!");
-                                    else if (!Infocards.IsName(ids))
+                                    else if (!Infocards.IsName(ids) && !Infocards.IsInUnloadedDll(ids))
                                         Logger.LogIDError(file, setting);
                                     break;
                                 case "star":

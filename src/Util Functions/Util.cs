@@ -127,7 +127,8 @@ namespace FLScanIE.Util_Functions
                     Logger.LogInvalidValue(file, setting, "Has to be a number!");
                     return false;
                 }
-                else if (ids != 0) // 0 means "no name/infocard"
+                // 0 means "no name/infocard". IDs of a DLL that couldn't be loaded can't be checked (already reported).
+                else if (ids != 0 && !Infocards.IsInUnloadedDll(ids))
                 {
                     // Names have to be strings. Infocards are usually XML infocards, but some refer to strings.
                     bool found = infocard ? Infocards.IsInfocard(ids) || Infocards.IsName(ids) : Infocards.IsName(ids);
