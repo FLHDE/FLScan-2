@@ -27,6 +27,10 @@ namespace FLScanIE
 
         private static string[] allArchetypes;
 
+        // The docking types of common.dll (compared case-insensitively)
+        private static readonly HashSet<string> dockTypes = new HashSet<string>(new[] { "berth", "moor_small", "moor_medium",
+            "moor_large", "ring", "pad", "jump", "airlock" }, StringComparer.OrdinalIgnoreCase);
+
         public static void CheckSolarFolder()
         {
             Logger.ILog("Checking Solar-Folder");
@@ -74,6 +78,25 @@ namespace FLScanIE
                             if (!FXChecks.EffectExists(solar.Str(i)))
                                 Logger.LogInvalidValue(file, solar, "Effect doesn't exist!", solar.Str(i));
                         break;
+                }
+            }
+
+            // docking_sphere = type, hardpoint, radius[, animation]. common.dll uses type 0 (no docking) for an unknown
+            // type, and the dock needs the hardpoint on the model.
+            foreach (var section in ini.sections.Where(sec => sec.sectionName.ToLower() == "solar"))
+            {
+                string nick = Util.TryGetStrSetting(section, "nickname");
+                UtfFile utf;
+                if (nick == null || !solarUTF.TryGetValue(nick, out utf))
+                    utf = null;
+                foreach (var sphere in section.GetSettings("docking_sphere"))
+                {
+                    if (!Util.CheckNumberOfArgs(sphere, file, 3, 4))
+                        continue;
+                    if (!dockTypes.Contains(sphere.Str(0).Trim()))
+                        Logger.LogInvalidValue(file, sphere, "Unknown docking type! Has to be berth, moor_small, moor_medium, moor_large, ring, pad, jump or airlock.", sphere.Str(0));
+                    if (utf != null && !utf.HardpointExists(sphere.Str(1).Trim()))
+                        Logger.LogInvalidValue(file, sphere, "Hardpoint doesn't exist in the model!", sphere.Str(1));
                 }
             }
 
