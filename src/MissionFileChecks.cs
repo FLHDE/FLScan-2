@@ -20,6 +20,38 @@ namespace FLScanIE
         // The game loads the population pilots before the story pilots, which inherit from them
         private static readonly string[] pilotFiles = { @"MISSIONS\pilots_population.ini", @"MISSIONS\pilots_story.ini" };
 
+        // The lowercase nicknames of all [Pilot]s, loaded when they're first needed
+        private static HashSet<string> pilotNicks;
+
+        /// <summary>
+        /// True if a [Pilot] with this nickname is defined in one of the pilot files.
+        /// </summary>
+        public static bool PilotExists(string nick)
+        {
+            if (pilotNicks == null)
+            {
+                var nicks = new HashSet<string>();
+                foreach (string file in pilotFiles)
+                {
+                    FLDataFile ini = Checker.LoadIni(file);
+                    if (ini == null)
+                        continue; // Reported by CheckPilotFiles
+                    foreach (var setting in ini.GetSettings("Pilot", "nickname").Where(s => s.NumValues() > 0))
+                        nicks.Add(setting.Str(0).Trim().ToLower());
+                }
+                pilotNicks = nicks;
+            }
+            return pilotNicks.Contains(nick.Trim().ToLower());
+        }
+
+        /// <summary>
+        /// Forgets the pilots of a previous scan.
+        /// </summary>
+        public static void ResetPilots()
+        {
+            pilotNicks = null;
+        }
+
         // The [Pilot] settings that refer to a block, and the section of that block
         private static readonly Dictionary<string, string> pilotBlockSettings = new[]
         {

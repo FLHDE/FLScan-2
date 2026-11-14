@@ -73,6 +73,7 @@ namespace FLScanIE
                 return false;
 
             FLDataFile.ResetReportedEmptyFiles();
+            MissionFileChecks.ResetPilots();
             string flExePath = Path.Combine(flPath, "EXE");
             try
             {

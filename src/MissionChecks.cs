@@ -490,7 +490,7 @@ namespace FLScanIE
         static void CheckLevelForFaction(string encounterFaction, string encounterFile, uint level, string referencedFrom)
         {
             if (!factionprops.ContainsKey(encounterFaction))
-                return; // TODO
+                return; // Reported as "Faction not found!" where the zone names the faction
 
             FACTIONPROPS fp = factionprops[encounterFaction];
             foreach (string npc_ship in fp.npc_ships)
@@ -534,7 +534,7 @@ namespace FLScanIE
         static void CheckEncounterForFaction(string encounterFaction, string encounterFile, string referencedFrom)
         {
             if(!factionprops.ContainsKey(encounterFaction))
-                return; // TODO
+                return; // Reported as "Faction not found!" where the zone names the faction
             FACTIONPROPS fp = factionprops[encounterFaction];
 
             FLDataFile file = new FLDataFile(encounterFile, true);
