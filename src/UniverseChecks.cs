@@ -254,11 +254,18 @@ namespace FLScanIE
             }
         }
 
+        // The systems that common.dll allows to have no msg_id_prefix (compared case-sensitively)
+        private static readonly string[] systemsWithoutMsgIdPrefix = { "St01", "St02", "St03", "St02b", "St02c", "St03b", "Tut", "Ew05", "FP7_system", "Ew06" };
+
         private static void CheckSystemEntry(string file, FLDataFile.Section section, Dictionary<string, string> systemPositions)
         {
             string nick = Util.TryGetStrSetting(section, "nickname");
             if (nick == null)
                 return; // Already reported while parsing
+            // Space voices refer to the system by its msg_id_prefix
+            string msgIdPrefix = section.GetSettings("msg_id_prefix").Select(s => s.NumValues() > 0 ? s.Str(0) : "").LastOrDefault();
+            if (string.IsNullOrEmpty(msgIdPrefix) && !systemsWithoutMsgIdPrefix.Contains(nick))
+                Logger.ELog(string.Format("{0}: System {1} has no msg_id_prefix! Space voices need it to refer to the system.", file, nick));
             nick = nick.ToLower();
             Util.CheckIDInfo(section, "ids_info", nick, file);
             Util.CheckIDName(section, "strid_name", nick, file);
@@ -298,6 +305,54 @@ namespace FLScanIE
                     case "msg_id_prefix":
                         //if(!AudioChecks.VoiceMsgExists(val)) // TODO
                         //    Logger.LogInvalidValue(file, setting, "Msg doesn't exist!");
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks the [Archetype] section of a system, whose archetypes, sounds and voice lines the client loads
+        /// when it enters the system. It warns about unknown keys.
+        /// </summary>
+        private static void CheckPreloads(string file, FLDataFile.Section section)
+        {
+            foreach (var setting in section.settings.Where(s => s.NumValues() > 0))
+            {
+                string val = setting.Str(0);
+                switch (setting.settingName.ToLower())
+                {
+                    case "ship":
+                        if (!ShipChecks.ShipExists(val))
+                            Logger.LogInvalidValue(file, setting, "Ship doesn't exist!");
+                        break;
+                    case "equipment":
+                        if (!EquipmentChecks.EquipExists(val))
+                            Logger.LogInvalidValue(file, setting, "Equipment doesn't exist!");
+                        break;
+                    case "simple":
+                        if (!ShipChecks.SimpleExists(val))
+                            Logger.LogInvalidValue(file, setting, "Simple doesn't exist!");
+                        break;
+                    case "solar":
+                        if (!SolarChecks.SolarExists(val))
+                            Logger.LogInvalidValue(file, setting, "Solar doesn't exist!");
+                        break;
+                    case "asteroid":
+                        if (!SolarChecks.AsteroidExists(val))
+                            Logger.LogInvalidValue(file, setting, "Asteroid doesn't exist!");
+                        break;
+                    case "snd":
+                        if (!AudioChecks.SoundExists(val))
+                            Logger.LogInvalidValue(file, setting, "Sound doesn't exist!");
+                        break;
+                    case "voice": // voice, message
+                        if (!AudioChecks.VoiceExists(val))
+                            Logger.LogInvalidValue(file, setting, "Voice doesn't exist!");
+                        if (setting.NumValues() > 1 && !AudioChecks.VoiceMsgExists(setting.Str(1)))
+                            Logger.LogInvalidValue(file, setting, "Voice message doesn't exist!", setting.Str(1));
+                        break;
+                    default:
+                        Logger.LogInvalidValue(file, setting, "The game doesn't know this kind of archetype to preload!", setting.settingName, LogLevel.warning);
                         break;
                 }
             }
@@ -348,6 +403,13 @@ namespace FLScanIE
 
                             switch (setting.settingName.ToLower())
                             {
+                                case "drag_modifier":
+                                    float drag;
+                                    if (!float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out drag))
+                                        Logger.LogInvalidValue(file, setting, "Has to be a number!");
+                                    else if (drag < 1)
+                                        Logger.LogInvalidValue(file, setting, "Has to be at least 1! The game reports an error and uses 1.");
+                                    break;
                                 case "vignette_type":
                                     val = val.ToLower();
                                     if (val != "exclusion" && val != "field" && val != "open")
@@ -437,25 +499,8 @@ namespace FLScanIE
                         if (val != null && !Checker.FileExists(val))
                             Logger.LogFileNotFound(file, section.GetSetting("file"));
                         break;
-                    case "archetype": // Updated 01/2024
-                        foreach (var setting in section.settings)
-                        {
-                            switch (setting.settingName)
-                            {
-                                case "solar":
-                                    break;
-                                case "ship":
-                                    break;
-                                case "simple":
-                                    break;
-                                case "equipment":
-                                    break;
-                                case "snd":
-                                    break;
-                                case "voice":
-                                    break;
-                            }
-                        }
+                    case "archetype":
+                        CheckPreloads(file, section);
                         break;
                     case "asteroids":
                         string ast_file = Util.TryGetStrSetting(section, "file");
