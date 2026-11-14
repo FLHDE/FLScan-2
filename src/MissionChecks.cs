@@ -140,32 +140,18 @@ namespace FLScanIE
             }
         }
 
-        static void LoadDefaultShipClassMembers()
-        {
-            List<string> default_members = new List<string>()
-            {
-                "FIGHTER", "FREIGHTER", "TRANSPORT", "GUNBOAT", "CRUISER", "CAPITAL", "TRADELANE",
-                "JUMPGATE", "WEAPONS_PLATFORM", "DESTROYABLE_DEPOT", "SOLAR", "ANYTHING"
-            }.ConvertAll(m => m.ToLowerInvariant());
-
-            SHIPCLASS s = new SHIPCLASS();
-            s.nickname = "_";
-            s.members = default_members;
-            shipclasses[s.nickname] = s;
-
-            for (int i = 0; i < 10; ++i)
-            for (int j = 0; j < 10; ++j)
-            {
-                s.nickname = $"diff{i}{j}";
-                s.members = default_members;
-                shipclasses[s.nickname] = s;
-
-                default_members.Add($"d{i}{j}");
-            }
-        }
+        // npc_class values that aren't a member of a [ShipClass] but are still used:
+        // - Random missions look for NPC ships with the classes class_fighter and "D<level>", for each NPC level
+        //   from 1 to 25 (content.dll). Neither is a [ShipClass], so they're compared with npc_class directly.
+        // - cruiser isn't used by the game, but vanilla gives it to its cruisers, so reporting it isn't useful.
+        // The diff<n> classes the game adds to encounter ships are [ShipClass]es in shipclasses.ini.
+        static readonly HashSet<string> gameClassIds = new HashSet<string>(
+            new[] { "class_fighter", "cruiser" }.Concat(Enumerable.Range(1, 25).Select(level => "d" + level)));
 
         static bool ShipClassMemberExists(string member)
         {
+            if (gameClassIds.Contains(member))
+                return true;
             foreach (SHIPCLASS c in shipclasses.Values)
             {
                 foreach (string m in c.members)
@@ -656,7 +642,6 @@ namespace FLScanIE
 
                 LoadFormations();
                 LoadShipClasses();
-                LoadDefaultShipClassMembers();
                 LoadNPCShips();
                 LoadFactionProps();
                 LoadUniverse();
