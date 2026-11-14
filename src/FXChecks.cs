@@ -147,6 +147,10 @@ namespace FLScanIE
                         if (!EffectExists(debr.Str(0)))
                             Logger.LogInvalidValue(file, debr, "Effect doesn't exist!");
                         break;
+                    case "death_method": // The client keeps exploding for other values
+                        if (debr.Str(0).ToLower() != "exploding" && debr.Str(0).ToLower() != "vanishing")
+                            Logger.LogInvalidValue(file, debr, "Has to be exploding or vanishing!");
+                        break;
                 }
             }
         }
@@ -160,6 +164,34 @@ namespace FLScanIE
             {
                 if (!EffectExists(fuseEffect.Str(0)))
                     Logger.LogInvalidValue(file, fuseEffect, "Effect doesn't exist!");
+            }
+
+            foreach (var setting in ini.GetSettings("start_explosion", "explosion").Where(s => s.NumValues() > 0))
+            {
+                if (!ExplosionExists(setting.Str(0)))
+                    Logger.LogInvalidValue(file, setting, "Explosion doesn't exist!");
+            }
+            foreach (var setting in ini.GetSettings("ignite_fuse", "fuse").Where(s => s.NumValues() > 0))
+            {
+                if (!FuseExists(setting.Str(0)))
+                    Logger.LogInvalidValue(file, setting, "Fuse doesn't exist!");
+            }
+            // The server compares fate case-sensitively and keeps the default for other values
+            foreach (var setting in ini.GetSettings("destroy_group", "fate").Where(s => s.NumValues() > 0))
+            {
+                if (setting.Str(0) != "debris" && setting.Str(0) != "disappear")
+                    Logger.LogInvalidValue(file, setting, "Has to be debris or disappear (lowercase)!");
+            }
+            foreach (var setting in ini.GetSettings("destroy_hp_attachment", "fate").Where(s => s.NumValues() > 0))
+            {
+                if (setting.Str(0) != "debris" && setting.Str(0) != "disappear" && setting.Str(0) != "loot")
+                    Logger.LogInvalidValue(file, setting, "Has to be debris, disappear or loot (lowercase)!");
+            }
+            // Anything but absolute is relative
+            foreach (var setting in ini.sections.SelectMany(sec => sec.settings).Where(s => s.settingName.ToLower() == "damage_type" && s.NumValues() > 0))
+            {
+                if (setting.Str(0).ToLower() != "absolute" && setting.Str(0).ToLower() != "relative")
+                    Logger.LogInvalidValue(file, setting, "Has to be absolute or relative! The game uses relative otherwise.", LogLevel.warning);
             }
         }
         
