@@ -102,7 +102,7 @@ namespace FLScanIE
 
         public static void Check()
         {
-            if (ShouldCheck(Checks.Solar))
+            if (ShouldCheck(Checks.Character))
                 Util.RunCheck(CharacterChecks.CheckCharacterFolder, "characters");
             if (ShouldCheck(Checks.Universe))
                 Util.RunCheck(UniverseChecks.CheckUniverseFolder, "universe");

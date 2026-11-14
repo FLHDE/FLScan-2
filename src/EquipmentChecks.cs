@@ -34,7 +34,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
         private static string[] weaponTypes;
 
         private static string[] hpTypes = Util.LoadConfig("HardpointTypes");
-        private static string[] shieldTypes = Util.LoadConfig("ShieldTypes");
+        // Known shield types (lowercase): the vanilla ones from conf.ini plus those used by [ShieldGenerator] sections
+        private static string[] vanillaShieldTypes = Util.LoadConfig("ShieldTypes");
+        private static HashSet<string> shieldTypes = new HashSet<string>();
 
         private static string[] GoodCategories = Util.LoadConfig("GoodCategories");
 
@@ -57,8 +59,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             {
                 if (Util.CheckNumberOfArgs(setting, file, 2))
                 {
-                    string shieldType = setting.Str(0).ToLower();
-                    if(!shieldType.Contains(shieldType))
+                    string shieldType = setting.Str(0);
+                    if (!ShieldTypeExists(shieldType))
                         Logger.LogInvalidValue(file, setting, "Shield-type not found!", shieldType);
                 }
             }
@@ -67,7 +69,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
         private static string[] hasIDS = new string[] { "Commodity", "ShieldGenerator", "Engine", "CounterMeasure", "CounterMeasureDropper", "RepairKit", "Scanner", "ShieldBattery", "Tractor", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition"}.Select(s => s.ToLower()).ToArray();
         private static string[] hasArchetype = new string[] { "LootCrate", "Shield", "CargoPod", "ShieldGenerator", "Power", "CounterMeasure", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition", "CounterMeasureDropper" }.Select(s => s.ToLower()).ToArray();
         private static string[] hasMaterial = new string[] { "LootCrate", "CargoPod", "ShieldGenerator", "Power", "CounterMeasureDropper", "CloakingDevice", "Gun", "Mine", "MineDropper" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasLootAppearance = new string[] { "Commodity", "CounterMeasure", "RepairKit", "ShieldBattery", "Mine Munition" }.Select(s => s.ToLower()).ToArray();
+        private static string[] hasLootAppearance = new string[] { "Commodity", "CounterMeasure", "RepairKit", "ShieldBattery", "Mine", "Munition" }.Select(s => s.ToLower()).ToArray();
         private static string[] hasSeparationExplosion = new string[] { "CounterMeasureDropper", "Gun", "MineDropper", "ShieldGenerator", "Thruster", "CollisionGroup" }.Select(s => s.ToLower()).ToArray();
         private static string[] hasExplosionArch = new string[] { "LootCrate", "CargoPod", "Mine", "Munition", "Ship", "Asteroid", "AsteroidMine", "DynamicAsteroid", "Solar" }.Select(s => s.ToLower()).ToArray();
         private static string[] hasDebris = new string[] { "CargoPod", "ShieldGenerator", "CounterMeasureDropper", "Gun", "MineDropper" }.Select(s => s.ToLower()).ToArray();
@@ -109,9 +111,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 }
                 if (hasSeparationExplosion.Contains(cat))
                 {
+                    // This refers to an [Explosion], e.g. sever_debris in fx\explosions.ini
                     string expl = Util.TryGetStrSetting(section, "separation_explosion");
-                    //if (expl != null && AudioChecks.SoundExists(expl)) // TODO: is this really a sound?
-                    //    Logger.LogInvalidValue(file, section.GetSetting("separation_explosion"), "Sound doesn't exist!");
+                    if (expl != null && !FXChecks.ExplosionExists(expl))
+                        Logger.LogInvalidValue(file, section.GetSetting("separation_explosion"), "Explosion doesn't exist!");
                 }
                 if (hasExplosionArch.Contains(cat))
                 {
@@ -299,11 +302,11 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         break;
                     case "mine":
-                        string m_const_efect = Util.TryGetStrSetting(section, "const_efect");
+                        string m_const_effect = Util.TryGetStrSetting(section, "const_effect");
                         string m_snd = Util.TryGetStrSetting(section, "one_shot_sound");
 
-                        if (m_const_efect != null && !FXChecks.EffectExists(m_const_efect))
-                            Logger.LogInvalidValue(file, section.GetSetting("const_efect"), "Effect doesn't exist!");
+                        if (m_const_effect != null && !FXChecks.EffectExists(m_const_effect))
+                            Logger.LogInvalidValue(file, section.GetSetting("const_effect"), "Effect doesn't exist!");
                         if (m_snd != null && !AudioChecks.SoundExists(m_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("one_shot_sound"), "Sound doesn't exist!");
                         break;
@@ -503,7 +506,10 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         foreach (var marketGood in MarketGoods)
                         {
                             if (marketGood.NumValues() < 7)
-                                break;
+                            {
+                                Logger.LogArgCount(file, marketGood, 7);
+                                continue;
+                            }
 
                             string[] args = marketGood.values.Select(s => s.ToString().Trim()).ToArray();
 
@@ -556,6 +562,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             marketFiles = data.GetSettings("markets").Select(s => s.Str(0)).ToArray();
             weaponModFiles = data.GetSettings("WeaponModDB").Select(s => s.Str(0)).ToArray();
             equipUtf = new Dictionary<string, Dictionary<string, UtfFile>>();
+            shieldTypes = new HashSet<string>(vanillaShieldTypes);
 
             var equipNicks = new Dictionary<string, List<string>>();
             List<string> explosionNicks = new List<string>();
@@ -641,6 +648,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if (!Checker.DisableUTF && nickUtfTuple.UtfFile != null)
                         {
                             equipUtf[cat][nickUtfTuple.Nick] = nickUtfTuple.UtfFile;
+                        }
+
+                        if (cat == "shieldgenerator")
+                        {
+                            string shieldType = Util.TryGetStrSetting(section, "shield_type");
+                            if (shieldType != null)
+                                shieldTypes.Add(shieldType.ToLower());
                         }
                         break;
                     case "explosion":
