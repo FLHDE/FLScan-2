@@ -24,6 +24,7 @@ namespace FLScanIE
         {
             Logger.ILog("Checking Ship-Folder");
             Util.RunChecks(CheckShipFile, shipFiles);
+            Util.CheckArchetypeInherit(shipFiles, new[] { "ship" }, "ship", ShipExists);
             Logger.ILog("Finished Ship-Folder");
         }
 

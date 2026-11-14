@@ -309,6 +309,50 @@ namespace FLScanIE.Util_Functions
         /// Runs a check on each file (relative to DATA). Files that aren't present are skipped: vanilla files can't
         /// be checked, and missing files are reported where they are referenced.
         /// </summary>
+        /// <summary>
+        /// Checks inherit in the archetype sections (lowercase names) of these files, read in this order the way
+        /// common.dll reads them: the donor is looked up among the archetypes read so far (the game warns that
+        /// inherit failed otherwise), and its values are copied over everything read before inherit, except the
+        /// nickname.
+        /// </summary>
+        public static void CheckArchetypeInherit(IEnumerable<string> files, string[] sectionNames, string what, Func<string, bool> exists)
+        {
+            var defined = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in files)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                bool onDisk = Checker.FileExistsOnDisk(file);
+                foreach (var section in ini.sections.Where(sec => sectionNames.Contains(sec.sectionName.ToLower())))
+                {
+                    bool gotOtherKeys = false;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key != "inherit")
+                        {
+                            if (key != "nickname")
+                                gotOtherKeys = true;
+                            continue;
+                        }
+                        if (!onDisk)
+                            continue;
+                        string donor = setting.Str(0).Trim();
+                        if (!defined.Contains(donor))
+                            Logger.LogInvalidValue(file, setting, exists(donor)
+                                ? "Has to be defined before this " + what + "! The game warns that inherit failed otherwise."
+                                : what.Substring(0, 1).ToUpper() + what.Substring(1) + " doesn't exist! The game warns that inherit failed.");
+                        else if (gotOtherKeys)
+                            Logger.LogInvalidValue(file, setting, "Has to come first! The game copies the " + what + " over the values before it.", LogLevel.warning);
+                    }
+                    string nick = TryGetStrSetting(section, "nickname");
+                    if (nick != null)
+                        defined.Add(nick.Trim());
+                }
+            }
+        }
+
         public static void RunChecks(CheckFileDelegate check, IEnumerable<string> files)
         {
             foreach (var file in files)

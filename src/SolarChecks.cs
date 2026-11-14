@@ -36,6 +36,9 @@ namespace FLScanIE
             Logger.ILog("Checking Solar-Folder");
             Util.RunChecks(CheckSolarFile, solarFiles);
             Util.RunChecks(CheckAsteroidFile, asteroidFiles);
+            Util.CheckArchetypeInherit(solarFiles, new[] { "solar" }, "solar", SolarExists);
+            Util.CheckArchetypeInherit(Checker.flIni.GetSettings("Data", "asteroids").Where(s => s.NumValues() > 0).Select(s => s.Str(0)),
+                new[] { "asteroid", "asteroidmine" }, "asteroid", AsteroidExists);
             Util.RunChecks(CheckStarFile, starFiles);
             Logger.ILog("Finished Solar-Folder");
         }
