@@ -42,6 +42,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             Logger.ILog("Checking Equipment-Folder");
             var shipHulls = new Dictionary<string, string>();
             Util.RunChecks(CheckEquipmentFile, equipmentFiles);
+            CheckEquipmentReadOrder();
             Util.RunChecks(CheckGoodFile, goodFiles);
             Util.RunChecks(CheckMarketFile, marketFiles);
             Util.RunChecks(CheckWeaponModFile, weaponModFiles);
@@ -119,6 +120,49 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             }
         }
 
+        /// <summary>
+        /// Common.dll looks up inherit, loot_appearance and pod_appearance while it reads the equipment files, in
+        /// the order of freelancer.ini, so they have to name equipment that is defined earlier. inherit copies
+        /// nothing from equipment of another kind, and pod_appearance is ignored if it isn't a [CargoPod].
+        /// </summary>
+        private static void CheckEquipmentReadOrder()
+        {
+            // The kind of each equipment defined so far (the first definition is used)
+            var defined = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in equipmentFiles)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                foreach (var section in ini.sections)
+                {
+                    string kind = section.sectionName.ToLower();
+                    if (!EquipmentKinds.Contains(kind))
+                        continue;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key != "inherit" && key != "loot_appearance" && key != "pod_appearance")
+                            continue;
+                        string target = setting.Str(0);
+                        string targetKind;
+                        if (!defined.TryGetValue(target, out targetKind))
+                        {
+                            if (EquipExists(target))
+                                Logger.LogInvalidValue(file, setting, "Has to be defined before this equipment! The game looks it up while it reads the file.");
+                            else if (key == "inherit") // The other keys are reported by CheckEquipmentFile
+                                Logger.LogInvalidValue(file, setting, "Equipment doesn't exist!");
+                        }
+                        else if (key == "inherit" && targetKind != kind)
+                            Logger.LogInvalidValue(file, setting, "Is a [" + targetKind + "], so the game copies nothing from it!", LogLevel.warning);
+                    }
+                    string nick = Util.TryGetStrSetting(section, "nickname");
+                    if (nick != null && !defined.ContainsKey(nick))
+                        defined[nick] = kind;
+                }
+            }
+        }
+
         private static void CheckEquipmentFile(string file)
         {
             FLDataFile ini = new FLDataFile(Path.Combine(Checker.flDataPath, file), true);
@@ -147,6 +191,18 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     string expl = Util.TryGetStrSetting(section, "explosion_arch");
                     if (expl != null && !FXChecks.ExplosionExists(expl))
                         Logger.LogInvalidValue(file, section.GetSetting("explosion_arch"), "Explosion doesn't exist!");
+
+                    foreach (var type in section.GetSettings("type"))
+                        Util.CheckObjectType(file, type);
+                }
+                // The launchers flash a light animation of fx\lightanim.ini when they fire (freelancer.exe)
+                if (cat == "gun" || cat == "minedropper" || cat == "countermeasuredropper")
+                {
+                    foreach (var lightAnim in section.GetSettings("light_anim").Where(s => s.NumValues() > 0))
+                    {
+                        if (!FXChecks.LightAnimExists(lightAnim.Str(0)))
+                            Logger.LogInvalidValue(file, lightAnim, "Light animation doesn't exist in fx\\lightanim.ini!");
+                    }
                 }
                 if (hasLootAppearance.Contains(cat))
                 {
@@ -233,11 +289,16 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         {
                             switch (setting.settingName)
                             {
+                                // The effects of the player's and other ships, and of the ring (freelancer.exe)
+                                case "tl_player_enter":
                                 case "tl_player_travel":
                                 case "tl_player_splash":
+                                case "tl_player_exit":
+                                case "tl_player_disrupt":
                                 case "tl_ring_active":
                                 case "tl_ship_disrupt":
                                 case "tl_ship_enter":
+                                case "tl_ship_splash":
                                 case "tl_ship_exit":
                                 case "tl_ship_travel":
                                     if(!FXChecks.EffectExists(setting.Str(0)))
@@ -286,13 +347,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         }
                         break;
                     case "light":
-                        string li_inherit = Util.TryGetStrSetting(section, "inherit");
-                        if (li_inherit != null && !EquipExists(li_inherit, "light"))
-                            Logger.LogInvalidValue(file, section.GetSetting("inherit"), "Light not found!");
-                        break;
+                        break; // inherit: see CheckEquipmentReadOrder
                     case "countermeasuredropper":
                         string cmd_particle = Util.TryGetStrSetting(section, "flash_particle_name");
-                        string cmd_light_anim = Util.TryGetStrSetting(section, "light_anim"); // TODO
                         string cmd_archtype = Util.TryGetStrSetting(section, "projectile_archetype");
 
                         if (cmd_particle != null && !FXChecks.EffectExists(cmd_particle))

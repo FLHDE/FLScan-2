@@ -49,6 +49,8 @@ namespace FLScanIE
                     Util.CheckIDName(solar, solar.LineNumber, file);
                 if (solar.settingName == "ids_info")
                     Util.CheckIDInfo(solar, solar.LineNumber, file);
+                if (solar.settingName.ToLower() == "type")
+                    Util.CheckObjectType(file, solar);
                 switch (solar.settingName)
                 {
                     case "DA_archetype":
@@ -145,6 +147,8 @@ namespace FLScanIE
 
             foreach (var asteroid in asteroids)
             {
+                if (asteroid.settingName.ToLower() == "type")
+                    Util.CheckObjectType(file, asteroid);
                 switch (asteroid.settingName)
                 {
                     case "DA_archetype":

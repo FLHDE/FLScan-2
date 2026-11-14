@@ -163,6 +163,23 @@ namespace FLScanIE.Util_Functions
             return ParseNickUTF(flDataPath, file, section, "nickname", DaArchetypeKey(section), errorUtf);
         }
 
+        // The object types of DecodeType in common.dll (compared case-insensitively)
+        private static readonly HashSet<string> objectTypes = new HashSet<string>(new[] { "NONE", "MOON", "PLANET", "SUN",
+            "ASTEROID", "BLACKHOLE", "SATELLITE", "DOCKING_RING", "JUMP_GATE", "JUMP_HOLE", "WEAPONS_PLATFORM",
+            "DESTROYABLE_DEPOT", "NON_TARGETABLE", "MISSION_SATELLITE", "AIRLOCK_GATE", "TRADELANE_RING", "STATION",
+            "WAYPOINT", "FIGHTER", "FREIGHTER", "GUNBOAT", "CRUISER", "TRANSPORT", "CAPITAL", "MINING", "GUIDED", "MINE",
+            "LOOT", "BULLET" }, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Checks the type of an archetype (the key is read for every archetype). The game warns about an unknown
+        /// type and uses NONE.
+        /// </summary>
+        public static void CheckObjectType(string file, FLDataFile.Setting setting)
+        {
+            if (setting.NumValues() > 0 && !objectTypes.Contains(setting.Str(0).Trim()))
+                Logger.LogInvalidValue(file, setting, "Unknown object type! The game warns and uses NONE.");
+        }
+
         /// <summary>
         /// The key that gives the model of an archetype: DA_archetype, or its alias attachment_archetype. Common.dll
         /// reads both into the same field, so the last one is used.

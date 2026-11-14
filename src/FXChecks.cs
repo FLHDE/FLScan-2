@@ -24,6 +24,8 @@ namespace FLScanIE
         private static string[] debrisNicknames;
         // The [IGraph] nicknames of the igraph files (lowercase), or null if none of them could be read
         private static HashSet<string> graphNicks;
+        // The [LightAnim] names of fx\lightanim.ini (lowercase), or null if the file isn't on disk
+        private static HashSet<string> lightAnimNames;
 
         public static void CheckFX()
         {
@@ -192,6 +194,16 @@ namespace FLScanIE
                     graphNicks.Add(nick.Str(0).Trim().ToLower());
             }
 
+            // The client always loads fx\lightanim.ini; it isn't in freelancer.ini. Names are cut to 31 characters.
+            lightAnimNames = null;
+            if (Checker.FileExistsOnDisk(@"FX\lightanim.ini"))
+            {
+                FLDataFile ini = Checker.LoadIni(@"FX\lightanim.ini");
+                if (ini != null)
+                    lightAnimNames = new HashSet<string>(ini.GetSettings("LightAnim", "name").Where(s => s.NumValues() > 0)
+                        .Select(s => Truncate(s.Str(0).Trim().ToLower(), 31)));
+            }
+
             Logger.ILog(string.Format("Finished FX-Folder, found {0} effects, {1} explosions and {2} fuses", effectNicks.Length, explosionNicks.Length, fuseNicks.Length));
         }
 
@@ -207,6 +219,20 @@ namespace FLScanIE
         public static bool GraphExists(string nick)
         {
             return graphNicks == null || graphNicks.Contains(nick.Trim().ToLower());
+        }
+
+        private static string Truncate(string s, int length)
+        {
+            return s.Length > length ? s.Substring(0, length) : s;
+        }
+
+        /// <summary>
+        /// True if fx\lightanim.ini has a [LightAnim] with this name (the client ignores the case and uses at most 31
+        /// characters), or if the file isn't on disk.
+        /// </summary>
+        public static bool LightAnimExists(string name)
+        {
+            return lightAnimNames == null || lightAnimNames.Contains(Truncate(name.Trim().ToLower(), 31));
         }
 
         public static bool EffectExists(string nick)
