@@ -306,6 +306,31 @@ namespace FLScanIE
         }
 
         /// <summary>
+        /// Returns the nicknames, as written, of the sections with these (case-insensitive) names.
+        /// </summary>
+        private static HashSet<string> GetExactNicknames(FLDataFile ini, params string[] sectionNames)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string sectionName in sectionNames)
+                names.UnionWith(ini.GetSettings(sectionName, "nickname").Where(s => s.NumValues() > 0).Select(s => s.Str(0).Trim()));
+            return names;
+        }
+
+        /// <summary>
+        /// Checks a reference that content.dll looks up with a case-sensitive string compare.
+        /// </summary>
+        private static void CheckExactReference(string file, FLDataFile.Setting setting, string value, HashSet<string> names, string what)
+        {
+            value = value.Trim();
+            if (names.Contains(value))
+                return;
+            if (names.Contains(value, StringComparer.OrdinalIgnoreCase))
+                Logger.LogInvalidValue(file, setting, "Has to match the case of the " + what + " nickname! The game compares them case-sensitively and does nothing otherwise.", value);
+            else
+                Logger.LogInvalidValue(file, setting, what + " doesn't exist!", value);
+        }
+
+        /// <summary>
         /// Checks the references in the script of a single-player mission.
         /// </summary>
         private static void CheckMissionScript(string file, string mission)
@@ -316,6 +341,13 @@ namespace FLScanIE
             var objLists = GetNicknames(ini, "ObjList");
             var objectives = GetNicknames(ini, "NNObjective");
             var triggers = GetNicknames(ini, "Trigger");
+            var dialogs = GetNicknames(ini, "Dialog");
+            var metaBehaviors = GetNicknames(ini, "MetaBehavior");
+            // Content.dll finds these with strcmp, so the case has to match
+            var solars = GetExactNicknames(ini, "MsnSolar");
+            var loot = GetExactNicknames(ini, "MsnLoot");
+            var shipGroups = GetExactNicknames(ini, "MsnShip", "MsnFormation"); // One list for both
+            var encounters = GetExactNicknames(ini, "MsnRandEnc");
 
             foreach (var section in ini.sections)
             {
@@ -372,8 +404,49 @@ namespace FLScanIE
                                 Logger.LogFileNotFound(file, setting);
                             break;
                         case "trigger:act_acttrig":
+                        case "trigger:act_deacttrig":
                             if (!triggers.Contains(value.ToLower()))
                                 Logger.LogInvalidValue(file, setting, "Trigger doesn't exist!");
+                            break;
+                        case "trigger:act_spawnsolar":
+                            CheckExactReference(file, setting, value, solars, "MsnSolar");
+                            break;
+                        case "trigger:act_spawnloot":
+                            CheckExactReference(file, setting, value, loot, "MsnLoot");
+                            break;
+                        case "trigger:act_spawnship": // Act_SpawnShip = ship[, objlist[, x, y, z[, orientation]]]. no_ol stands for no ObjList.
+                            CheckExactReference(file, setting, value, shipGroups, "MsnShip or MsnFormation");
+                            if (setting.NumValues() > 1 && setting.Str(1).Trim() != "" && setting.Str(1).Trim().ToLower() != "no_ol" && !objLists.Contains(setting.Str(1).Trim().ToLower()))
+                                Logger.LogInvalidValue(file, setting, "ObjList doesn't exist!", setting.Str(1));
+                            break;
+                        case "trigger:act_spawnformation":
+                            CheckExactReference(file, setting, value, shipGroups, "MsnShip or MsnFormation");
+                            break;
+                        case "trigger:act_enableenc":
+                        case "trigger:act_disableenc":
+                            CheckExactReference(file, setting, value, encounters, "MsnRandEnc");
+                            break;
+                        case "trigger:act_setnnstate": // Act_SetNNState = objective, state
+                            if (!objectives.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, "NNObjective doesn't exist!");
+                            if (setting.NumValues() < 2)
+                                Logger.LogArgCount(file, setting, 2);
+                            else if (!new[] { "active", "inactive", "complete", "failed" }.Contains(setting.Str(1).Trim().ToLower()))
+                                Logger.LogInvalidValue(file, setting, "Has to be ACTIVE, INACTIVE, COMPLETE or FAILED! The game uses INACTIVE otherwise.", setting.Str(1));
+                            break;
+                        case "trigger:act_setnnhidden": // Act_SetNNHidden = objective or all, hidden
+                            if (value.ToLower() != "all" && !objectives.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, "NNObjective doesn't exist!");
+                            break;
+                        case "trigger:act_startdialog":
+                            if (!dialogs.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, "Dialog doesn't exist!");
+                            break;
+                        case "trigger:act_givemb": // Act_GiveMB = ship, metabehavior
+                            if (setting.NumValues() < 2)
+                                Logger.LogArgCount(file, setting, 2);
+                            else if (!metaBehaviors.Contains(setting.Str(1).Trim().ToLower()))
+                                Logger.LogInvalidValue(file, setting, "MetaBehavior doesn't exist!", setting.Str(1));
                             break;
                     }
                 }
