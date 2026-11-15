@@ -330,6 +330,89 @@ namespace FLScanIE
                 Logger.LogInvalidValue(file, setting, what + " doesn't exist!", value);
         }
 
+        // The [MsnShip] and [MsnFormation] keys that content.dll writes to the group's current ship slot
+        private static readonly string[] shipSlotKeys = { "nickname", "npc", "random_name", "label", "init_objectives",
+            "init_metabehavior", "jumper", "cargo", "hit_points", "radius" };
+
+        /// <summary>
+        /// Checks the [MsnShip] and [MsnFormation] sections of a mission the way content.dll (FUN_06f18eb0) reads
+        /// them into its one list of ship groups. Each section starts with one ship slot; ship and formation drop
+        /// it, so the slot keys after them crash the game. ship = name takes the first ship of the first group read
+        /// so far with exactly that nickname (strcmp) and removes that group from the list. Returns the nicknames
+        /// of the groups left in the list, and where the groups that were taken were taken.
+        /// </summary>
+        private static HashSet<string> CheckShipGroups(string file, FLDataFile ini, Dictionary<string, int> takenAt)
+        {
+            var allNames = GetExactNicknames(ini, "MsnShip", "MsnFormation");
+            var groups = new List<string>(); // In the order they were read
+            var groupTypes = new List<string>();
+            foreach (var section in ini.sections)
+            {
+                string sectionName = section.sectionName.ToLower();
+                if (sectionName != "msnship" && sectionName != "msnformation")
+                    continue;
+                FLDataFile.Setting droppedBy = null;
+                foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                {
+                    string key = setting.settingName.ToLower();
+                    string value = setting.Str(0).Trim();
+                    if (droppedBy != null && shipSlotKeys.Contains(key))
+                        Logger.LogInvalidValue(file, setting, "Has to come before " + droppedBy.settingName + "! The game crashes otherwise.");
+                    if (key == "nickname")
+                    {
+                        // Duplicates of the same section type are reported by NicknameChecks
+                        int index = groups.IndexOf(value);
+                        if (index != -1 && groupTypes[index] != sectionName)
+                            Logger.LogInvalidValue(file, setting, "A " + (groupTypes[index] == "msnship" ? "MsnShip" : "MsnFormation") + " with this nickname is still in the game's list of ship groups! Act_SpawnShip and Act_SpawnFormation spawn the first one.");
+                        groups.Add(value);
+                        groupTypes.Add(sectionName);
+                    }
+                    else if (key == "formation")
+                    {
+                        droppedBy = droppedBy ?? setting;
+                    }
+                    else if (key == "ship")
+                    {
+                        droppedBy = droppedBy ?? setting;
+                        int index = groups.IndexOf(value);
+                        if (index != -1)
+                        {
+                            groups.RemoveAt(index);
+                            groupTypes.RemoveAt(index);
+                            if (!takenAt.ContainsKey(value))
+                                takenAt[value] = setting.LineNumber;
+                        }
+                        else if (takenAt.ContainsKey(value))
+                            Logger.LogInvalidValue(file, setting, "Already in " + FormationAt(takenAt[value]) + "! The game removes the MsnShip when a formation takes it, so this formation doesn't get it.");
+                        else if (groups.Contains(value, StringComparer.OrdinalIgnoreCase))
+                            Logger.LogInvalidValue(file, setting, "Has to match the case of the MsnShip nickname! The game compares them case-sensitively and leaves the ship out otherwise.");
+                        else if (allNames.Contains(value, StringComparer.OrdinalIgnoreCase))
+                            Logger.LogInvalidValue(file, setting, "The MsnShip has to be defined before this formation! The game leaves the ship out otherwise.");
+                        else
+                            Logger.LogInvalidValue(file, setting, "MsnShip doesn't exist!");
+                    }
+                }
+            }
+            return new HashSet<string>(groups, StringComparer.Ordinal);
+        }
+
+        private static string FormationAt(int line)
+        {
+            return line > 0 ? "the formation at line " + line : "another formation";
+        }
+
+        /// <summary>
+        /// Checks the ship group of Act_SpawnShip or Act_SpawnFormation.
+        /// </summary>
+        private static void CheckShipGroupReference(string file, FLDataFile.Setting setting, string value, HashSet<string> groups, Dictionary<string, int> takenAt)
+        {
+            value = value.Trim();
+            if (!groups.Contains(value) && takenAt.ContainsKey(value))
+                Logger.LogInvalidValue(file, setting, "The MsnShip is in " + FormationAt(takenAt[value]) + "! The game removes it when the formation takes it, so this does nothing.", value);
+            else
+                CheckExactReference(file, setting, value, groups, "MsnShip or MsnFormation");
+        }
+
         /// <summary>
         /// Checks the references in the script of a single-player mission.
         /// </summary>
@@ -337,7 +420,6 @@ namespace FLScanIE
         {
             FLDataFile ini = Load(file);
             var npcs = GetNicknames(ini, "NPC");
-            var ships = GetNicknames(ini, "MsnShip");
             var objLists = GetNicknames(ini, "ObjList");
             var objectives = GetNicknames(ini, "NNObjective");
             var triggers = GetNicknames(ini, "Trigger");
@@ -346,7 +428,8 @@ namespace FLScanIE
             // Content.dll finds these with strcmp, so the case has to match
             var solars = GetExactNicknames(ini, "MsnSolar");
             var loot = GetExactNicknames(ini, "MsnLoot");
-            var shipGroups = GetExactNicknames(ini, "MsnShip", "MsnFormation"); // One list for both
+            var takenShips = new Dictionary<string, int>(StringComparer.Ordinal);
+            var shipGroups = CheckShipGroups(file, ini, takenShips); // One list for both
             var encounters = GetExactNicknames(ini, "MsnRandEnc");
 
             foreach (var section in ini.sections)
@@ -375,10 +458,6 @@ namespace FLScanIE
                         case "msnformation:formation":
                             if (!MissionChecks.FormationExists(value))
                                 Logger.LogInvalidValue(file, setting, "Formation doesn't exist!");
-                            break;
-                        case "msnformation:ship":
-                            if (!ships.Contains(value.ToLower()))
-                                Logger.LogInvalidValue(file, setting, "MsnShip doesn't exist!");
                             break;
                         case "trigger:system":
                             if (value.ToLower() != "any" && value.ToLower() != "all" && !UniverseChecks.SystemExists(value))
@@ -415,12 +494,12 @@ namespace FLScanIE
                             CheckExactReference(file, setting, value, loot, "MsnLoot");
                             break;
                         case "trigger:act_spawnship": // Act_SpawnShip = ship[, objlist[, x, y, z[, orientation]]]. no_ol stands for no ObjList.
-                            CheckExactReference(file, setting, value, shipGroups, "MsnShip or MsnFormation");
+                            CheckShipGroupReference(file, setting, value, shipGroups, takenShips);
                             if (setting.NumValues() > 1 && setting.Str(1).Trim() != "" && setting.Str(1).Trim().ToLower() != "no_ol" && !objLists.Contains(setting.Str(1).Trim().ToLower()))
                                 Logger.LogInvalidValue(file, setting, "ObjList doesn't exist!", setting.Str(1));
                             break;
                         case "trigger:act_spawnformation":
-                            CheckExactReference(file, setting, value, shipGroups, "MsnShip or MsnFormation");
+                            CheckShipGroupReference(file, setting, value, shipGroups, takenShips);
                             break;
                         case "trigger:act_enableenc":
                         case "trigger:act_disableenc":
