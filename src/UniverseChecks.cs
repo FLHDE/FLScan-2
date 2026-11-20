@@ -748,10 +748,10 @@ namespace FLScanIE
                                         Logger.LogInvalidValue(file, setting, "System doesn't exist!", goto_sys);
                                     else if(!ObjectExists(goto_sys, goto_obj))
                                         Logger.LogInvalidValue(file, setting, "Object doesn't exist!", goto_obj);
-                                    // The jump gate or hole on the other side has to lead back to this one
+                                    // A one-way jump: probably a mistake, but nothing shows that the game needs a way back
                                     else if (nick != null && (!jumpTargets.TryGetValue(goto_sys.ToLower() + ":" + goto_obj.ToLower(), out back)
                                         || back[0] != sysnick.ToLower() || back[1] != nick.ToLower()))
-                                        Logger.LogInvalidValue(file, setting, "The target doesn't lead back to this object!", goto_obj);
+                                        Logger.LogInvalidValue(file, setting, "One-way jump! The target doesn't lead back to this object, so players can't return through it.", goto_obj, LogLevel.warning);
                                     if(!FXChecks.EffectExists(goto_eff))
                                         Logger.LogInvalidValue(file, setting, "Effect doesn't exist!", goto_eff);
                                     break;

@@ -338,14 +338,17 @@ namespace FLScanIE
         /// Checks the [MsnShip] and [MsnFormation] sections of a mission the way content.dll (FUN_06f18eb0) reads
         /// them into its one list of ship groups. Each section starts with one ship slot; ship and formation drop
         /// it, so the slot keys after them crash the game. ship = name takes the first ship of the first group read
-        /// so far with exactly that nickname (strcmp) and removes that group from the list. Returns the nicknames
-        /// of the groups left in the list, and where the groups that were taken were taken.
+        /// so far with exactly that nickname (strcmp) and removes that group from the list. Act_SpawnShip and
+        /// Act_SpawnFormation (FUN_06ec6580, FUN_06ec71d0) spawn the first group in the list with exactly that
+        /// nickname, and leave it in the list. Returns the nicknames of the groups left in the list, and where the
+        /// groups that were taken were taken.
         /// </summary>
         private static HashSet<string> CheckShipGroups(string file, FLDataFile ini, Dictionary<string, int> takenAt)
         {
             var allNames = GetExactNicknames(ini, "MsnShip", "MsnFormation");
             var groups = new List<string>(); // In the order they were read
             var groupTypes = new List<string>();
+            var groupSections = new List<FLDataFile.Section>();
             foreach (var section in ini.sections)
             {
                 string sectionName = section.sectionName.ToLower();
@@ -360,12 +363,9 @@ namespace FLScanIE
                         Logger.LogInvalidValue(file, setting, "Has to come before " + droppedBy.settingName + "! The game crashes otherwise.");
                     if (key == "nickname")
                     {
-                        // Duplicates of the same section type are reported by NicknameChecks
-                        int index = groups.IndexOf(value);
-                        if (index != -1 && groupTypes[index] != sectionName)
-                            Logger.LogInvalidValue(file, setting, "A " + (groupTypes[index] == "msnship" ? "MsnShip" : "MsnFormation") + " with this nickname is still in the game's list of ship groups! Act_SpawnShip and Act_SpawnFormation spawn the first one.");
                         groups.Add(value);
                         groupTypes.Add(sectionName);
+                        groupSections.Add(section);
                     }
                     else if (key == "formation")
                     {
@@ -379,6 +379,7 @@ namespace FLScanIE
                         {
                             groups.RemoveAt(index);
                             groupTypes.RemoveAt(index);
+                            groupSections.RemoveAt(index);
                             if (!takenAt.ContainsKey(value))
                                 takenAt[value] = setting.LineNumber;
                         }
@@ -393,7 +394,51 @@ namespace FLScanIE
                     }
                 }
             }
+
+            // The spawn actions run after the whole file is read, so they find the first group with a nickname in
+            // the list that's left
+            var spawned = new HashSet<string>(ini.sections.Where(s => s.sectionName.ToLower() == "trigger").SelectMany(s => s.settings)
+                .Where(s => s.NumValues() > 0 && (s.settingName.ToLower() == "act_spawnship" || s.settingName.ToLower() == "act_spawnformation"))
+                .Select(s => s.Str(0).Trim()), StringComparer.Ordinal);
+            for (int i = 0; i < groups.Count; i++)
+            {
+                int first = groups.IndexOf(groups[i]);
+                if (first == i)
+                    continue;
+                var nickSetting = Util.TryGetSetting(groupSections[i], "nickname");
+                string firstType = groupTypes[first] == "msnship" ? "MsnShip" : "MsnFormation";
+                var firstNick = Util.TryGetSetting(groupSections[first], "nickname");
+                string firstAt = firstNick.LineNumber > 0 ? " at line " + firstNick.LineNumber : "";
+                string message = string.Format("Never spawned! Act_SpawnShip and Act_SpawnFormation spawn the {0} with this nickname{1}, which comes first in the game's list of ship groups.", firstType, firstAt);
+                if (groupTypes[first] == groupTypes[i] && SameSettings(groupSections[first], groupSections[i]))
+                    Logger.LogInvalidValue(file, nickSetting, message + " This one is an identical copy.", LogLevel.warning);
+                else if (!spawned.Contains(groups[i]))
+                    Logger.LogInvalidValue(file, nickSetting, message + " Nothing spawns this nickname, so neither one is used.", LogLevel.warning);
+                else
+                    Logger.LogInvalidValue(file, nickSetting, message);
+            }
             return new HashSet<string>(groups, StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Whether two sections have the same settings and values (ignoring case and surrounding spaces).
+        /// </summary>
+        private static bool SameSettings(FLDataFile.Section a, FLDataFile.Section b)
+        {
+            if (a.settings.Count != b.settings.Count)
+                return false;
+            for (int i = 0; i < a.settings.Count; i++)
+            {
+                FLDataFile.Setting x = a.settings[i], y = b.settings[i];
+                if (x.settingName.ToLower() != y.settingName.ToLower() || x.NumValues() != y.NumValues())
+                    return false;
+                for (int v = 0; v < x.NumValues(); v++)
+                {
+                    if (x.Str(v).Trim().ToLower() != y.Str(v).Trim().ToLower())
+                        return false;
+                }
+            }
+            return true;
         }
 
         private static string FormationAt(int line)
