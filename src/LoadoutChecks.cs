@@ -26,6 +26,22 @@ namespace FLScanIE
 
             foreach (var loadout in ini.sections.Where(s => s.sectionName.ToLower() == "loadout"))
             {
+                // common.dll creates the loadout when it reads the first nickname and ignores later ones. equip and
+                // cargo add to that loadout, so before the nickname they crash the game.
+                bool gotNickname = false;
+                foreach (var setting in loadout.settings.Where(st => st.NumValues() > 0))
+                {
+                    string key = setting.settingName.ToLower();
+                    if (key == "nickname")
+                    {
+                        if (gotNickname)
+                            Logger.LogInvalidValue(file, setting, "The loadout already has a nickname! The game ignores this one.", LogLevel.warning);
+                        gotNickname = true;
+                    }
+                    else if (!gotNickname && (key == "equip" || key == "cargo"))
+                        Logger.LogInvalidValue(file, setting, "Has to come after the nickname! The game crashes otherwise.");
+                }
+
                 // The model of the archetype, used to check hardpoints. Null if unknown (no archetype, the model
                 // couldn't be loaded, it's a vanilla model that isn't present, or UTF checks are disabled).
                 UtfFile model = null;

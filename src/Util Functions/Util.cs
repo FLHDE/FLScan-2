@@ -160,7 +160,35 @@ namespace FLScanIE.Util_Functions
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, bool errorUtf)
         {
-            return ParseNickUTF(flDataPath, file, section, "nickname", "DA_archetype", errorUtf);
+            return ParseNickUTF(flDataPath, file, section, "nickname", DaArchetypeKey(section), errorUtf);
+        }
+
+        // The object types of DecodeType in common.dll (compared case-insensitively)
+        private static readonly HashSet<string> objectTypes = new HashSet<string>(new[] { "NONE", "MOON", "PLANET", "SUN",
+            "ASTEROID", "BLACKHOLE", "SATELLITE", "DOCKING_RING", "JUMP_GATE", "JUMP_HOLE", "WEAPONS_PLATFORM",
+            "DESTROYABLE_DEPOT", "NON_TARGETABLE", "MISSION_SATELLITE", "AIRLOCK_GATE", "TRADELANE_RING", "STATION",
+            "WAYPOINT", "FIGHTER", "FREIGHTER", "GUNBOAT", "CRUISER", "TRANSPORT", "CAPITAL", "MINING", "GUIDED", "MINE",
+            "LOOT", "BULLET" }, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Checks the type of an archetype (the key is read for every archetype). The game warns about an unknown
+        /// type and uses NONE.
+        /// </summary>
+        public static void CheckObjectType(string file, FLDataFile.Setting setting)
+        {
+            if (setting.NumValues() > 0 && !objectTypes.Contains(setting.Str(0).Trim()))
+                Logger.LogInvalidValue(file, setting, "Unknown object type! The game warns and uses NONE.");
+        }
+
+        /// <summary>
+        /// The key that gives the model of an archetype: DA_archetype, or its alias attachment_archetype. Common.dll
+        /// reads both into the same field, so the last one is used.
+        /// </summary>
+        public static string DaArchetypeKey(FLDataFile.Section section)
+        {
+            var last = section.settings.LastOrDefault(s => s.settingName.ToLowerInvariant() == "da_archetype"
+                || s.settingName.ToLowerInvariant() == "attachment_archetype");
+            return last == null ? "DA_archetype" : last.settingName;
         }
 
         public static NickUtfTuple ParseNickUTF(string flDataPath, string file, FLDataFile.Section section, string nick, string utf)
@@ -281,6 +309,50 @@ namespace FLScanIE.Util_Functions
         /// Runs a check on each file (relative to DATA). Files that aren't present are skipped: vanilla files can't
         /// be checked, and missing files are reported where they are referenced.
         /// </summary>
+        /// <summary>
+        /// Checks inherit in the archetype sections (lowercase names) of these files, read in this order the way
+        /// common.dll reads them: the donor is looked up among the archetypes read so far (the game warns that
+        /// inherit failed otherwise), and its values are copied over everything read before inherit, except the
+        /// nickname.
+        /// </summary>
+        public static void CheckArchetypeInherit(IEnumerable<string> files, string[] sectionNames, string what, Func<string, bool> exists)
+        {
+            var defined = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in files)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                bool onDisk = Checker.FileExistsOnDisk(file);
+                foreach (var section in ini.sections.Where(sec => sectionNames.Contains(sec.sectionName.ToLower())))
+                {
+                    bool gotOtherKeys = false;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key != "inherit")
+                        {
+                            if (key != "nickname")
+                                gotOtherKeys = true;
+                            continue;
+                        }
+                        if (!onDisk)
+                            continue;
+                        string donor = setting.Str(0).Trim();
+                        if (!defined.Contains(donor))
+                            Logger.LogInvalidValue(file, setting, exists(donor)
+                                ? "Has to be defined before this " + what + "! The game warns that inherit failed otherwise."
+                                : what.Substring(0, 1).ToUpper() + what.Substring(1) + " doesn't exist! The game warns that inherit failed.");
+                        else if (gotOtherKeys)
+                            Logger.LogInvalidValue(file, setting, "Has to come first! The game copies the " + what + " over the values before it.", LogLevel.warning);
+                    }
+                    string nick = TryGetStrSetting(section, "nickname");
+                    if (nick != null)
+                        defined.Add(nick.Trim());
+                }
+            }
+        }
+
         public static void RunChecks(CheckFileDelegate check, IEnumerable<string> files)
         {
             foreach (var file in files)

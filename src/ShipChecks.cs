@@ -24,6 +24,7 @@ namespace FLScanIE
         {
             Logger.ILog("Checking Ship-Folder");
             Util.RunChecks(CheckShipFile, shipFiles);
+            Util.CheckArchetypeInherit(shipFiles, new[] { "ship" }, "ship", ShipExists);
             Logger.ILog("Finished Ship-Folder");
         }
 
@@ -312,7 +313,7 @@ namespace FLScanIE
                                 break;
                             if (shipNicknames.Contains(retn.Nick, StringComparer.OrdinalIgnoreCase))
                             {
-                                Logger.LogDublicateValue(shipFile, section.GetSetting("nickname"), "Duplicate ship nickname!");
+                                Logger.LogDublicateValue(shipFile, section.GetSetting("nickname"), "Duplicate ship nickname! The game warns and uses the first definition.");
                                 break;
                             }
                             shipNicknames.Add(retn.Nick);
@@ -338,11 +339,25 @@ namespace FLScanIE
                 }
             }
 
+            // Common.dll also loads the [Simple]s of the explosion files
+            foreach (var explosionFile in Checker.flIni.GetSettings("Data", "explosions").Where(s => s.NumValues() > 0))
+            {
+                // Missing files are reported by Checker.Parse
+                FLDataFile ini = Checker.LoadIni(explosionFile.Str(0));
+                if (ini != null)
+                    simpleNicknames.AddRange(ini.GetSettings("Simple", "nickname").Where(s => s.NumValues() > 0).Select(s => s.Str(0)));
+            }
+
             ShipChecks.shipNicknames = shipNicknames.Select(n => n.ToLower()).ToArray();
             ShipChecks.simpleNicknames = simpleNicknames.Select(n => n.ToLower()).ToArray();
 
             Logger.ILog(string.Format("Finished Ship-Folder, found {0} ships ({1} models loaded) and {2} simples ({3} models loaded)",
                 ShipChecks.shipNicknames.Length, shipUTF.Values.Count(u => u != null), ShipChecks.simpleNicknames.Length, simpleUTF.Count));
+        }
+
+        public static bool SimpleExists(string nickname)
+        {
+            return simpleNicknames.Contains(nickname.ToLower());
         }
 
         public static bool ShipExists(string nickname)

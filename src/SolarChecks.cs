@@ -27,11 +27,18 @@ namespace FLScanIE
 
         private static string[] allArchetypes;
 
+        // The docking types of common.dll (compared case-insensitively)
+        private static readonly HashSet<string> dockTypes = new HashSet<string>(new[] { "berth", "moor_small", "moor_medium",
+            "moor_large", "ring", "pad", "jump", "airlock" }, StringComparer.OrdinalIgnoreCase);
+
         public static void CheckSolarFolder()
         {
             Logger.ILog("Checking Solar-Folder");
             Util.RunChecks(CheckSolarFile, solarFiles);
             Util.RunChecks(CheckAsteroidFile, asteroidFiles);
+            Util.CheckArchetypeInherit(solarFiles, new[] { "solar" }, "solar", SolarExists);
+            Util.CheckArchetypeInherit(Checker.flIni.GetSettings("Data", "asteroids").Where(s => s.NumValues() > 0).Select(s => s.Str(0)),
+                new[] { "asteroid", "asteroidmine" }, "asteroid", AsteroidExists);
             Util.RunChecks(CheckStarFile, starFiles);
             Logger.ILog("Finished Solar-Folder");
         }
@@ -49,9 +56,12 @@ namespace FLScanIE
                     Util.CheckIDName(solar, solar.LineNumber, file);
                 if (solar.settingName == "ids_info")
                     Util.CheckIDInfo(solar, solar.LineNumber, file);
+                if (solar.settingName.ToLower() == "type")
+                    Util.CheckObjectType(file, solar);
                 switch (solar.settingName)
                 {
                     case "DA_archetype":
+                    case "attachment_archetype":
                     case "material_library":
                         if (!Checker.FileExists(solar.Str(0)))
                             Logger.LogFileNotFound(file, solar);
@@ -71,6 +81,25 @@ namespace FLScanIE
                             if (!FXChecks.EffectExists(solar.Str(i)))
                                 Logger.LogInvalidValue(file, solar, "Effect doesn't exist!", solar.Str(i));
                         break;
+                }
+            }
+
+            // docking_sphere = type, hardpoint, radius[, animation]. common.dll uses type 0 (no docking) for an unknown
+            // type, and the dock needs the hardpoint on the model.
+            foreach (var section in ini.sections.Where(sec => sec.sectionName.ToLower() == "solar"))
+            {
+                string nick = Util.TryGetStrSetting(section, "nickname");
+                UtfFile utf;
+                if (nick == null || !solarUTF.TryGetValue(nick, out utf))
+                    utf = null;
+                foreach (var sphere in section.GetSettings("docking_sphere"))
+                {
+                    if (!Util.CheckNumberOfArgs(sphere, file, 3, 4))
+                        continue;
+                    if (!dockTypes.Contains(sphere.Str(0).Trim()))
+                        Logger.LogInvalidValue(file, sphere, "Unknown docking type! Has to be berth, moor_small, moor_medium, moor_large, ring, pad, jump or airlock.", sphere.Str(0));
+                    if (utf != null && !utf.HardpointExists(sphere.Str(1).Trim()))
+                        Logger.LogInvalidValue(file, sphere, "Hardpoint doesn't exist in the model!", sphere.Str(1));
                 }
             }
 
@@ -144,9 +173,12 @@ namespace FLScanIE
 
             foreach (var asteroid in asteroids)
             {
+                if (asteroid.settingName.ToLower() == "type")
+                    Util.CheckObjectType(file, asteroid);
                 switch (asteroid.settingName)
                 {
                     case "DA_archetype":
+                    case "attachment_archetype":
                     case "material_library":
                         if (!Checker.FileExists(asteroid.Str(0)))
                             Logger.LogFileNotFound(file, asteroid);
@@ -188,7 +220,7 @@ namespace FLScanIE
                                 break;
                             if (solarUTF.ContainsKey(retn.Nick))
                             {
-                                Logger.LogDublicateValue(solarFile, section.GetSetting("nickname"), "Duplicate solar nickname!");
+                                Logger.LogDublicateValue(solarFile, section.GetSetting("nickname"), "Duplicate solar nickname! The game redefines the first solar with this one, and reports an error for each [CollisionGroup] after it.");
                                 break;
                             }
                             solarNicknames.Add(retn.Nick);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 using System.IO;
 
 using FLScanIE.Util_Functions;
@@ -21,6 +22,7 @@ namespace FLScanIE
         {
             Logger.ILog("Checking Audio-Folder");
             Util.RunChecks(CheckSoundFile, soundFiles);
+            Util.RunChecks(CheckVoiceFile, voiceFiles);
             // TODO voice files, the nicknames hash has to exists as node in the utf-file
             Logger.ILog("Finished Audio-Folder");
         }
@@ -34,6 +36,110 @@ namespace FLScanIE
                 // The path is relative to DATA. A leading separator would make it relative to the drive root.
                 if (soundFile.NumValues() > 0 && !Checker.FileExists(soundFile.Str(0).TrimStart('\\', '/')))
                     Logger.LogFileNotFound(file, soundFile);
+            }
+
+            // The values the client warns about when it reads the sounds (SoundArch.cpp)
+            foreach (var section in ini.sections.Where(sec => sec.sectionName.ToLower() == "sound"))
+            {
+                foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                {
+                    string val = setting.Str(0).Trim();
+                    float number;
+                    switch (setting.settingName.ToLower())
+                    {
+                        case "nickname":
+                        case "file":
+                        case "streamer":
+                        case "is_2d":
+                        case "pitch_bendable":
+                        case "crv_pitch":
+                            break;
+                        case "type":
+                            if (!soundTypes.Contains(val.ToLower()))
+                                Logger.LogInvalidValue(file, setting, "Has to be normal, interface, voice, music or ambience! The game warns about it.", LogLevel.warning);
+                            break;
+                        case "persistent":
+                            if (val.ToLower() != "space" && val.ToLower() != "gameflow")
+                                Logger.LogInvalidValue(file, setting, "Has to be space or gameflow! The game warns about it.", LogLevel.warning);
+                            break;
+                        case "attenuation":
+                            if (float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out number) && ((int)number > 0 || (int)number < -96))
+                                Logger.LogInvalidValue(file, setting, "Has to be between -96 and 0! The game warns and clamps it.", LogLevel.warning);
+                            break;
+                        case "range": // min[, max], where max defaults to 30 * min. A negative min means no range.
+                            float min, max;
+                            if (!float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out min) || min < 0)
+                                break;
+                            max = min * 30;
+                            if (setting.NumValues() > 1 && setting.Str(1).Trim() != "" && !float.TryParse(setting.Str(1).Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out max))
+                                break;
+                            if (!(min < max))
+                                Logger.LogInvalidValue(file, setting, "The minimum has to be below the maximum! The game warns about an invalid range.", LogLevel.warning);
+                            break;
+                        case "lod1":
+                        case "lod2":
+                            if (!SoundExists(val))
+                                Logger.LogInvalidValue(file, setting, "Sound doesn't exist!");
+                            break;
+                        default:
+                            Logger.LogInvalidValue(file, setting, "Unknown [Sound] key! The game warns about it.", setting.settingName, LogLevel.warning);
+                            break;
+                    }
+                }
+            }
+        }
+
+        private static readonly string[] soundTypes = { "normal", "interface", "voice", "music", "ambience" };
+
+        /// <summary>
+        /// Checks the [Sound] and [VoiceSound] sections of a voice file the way the client reads them: the file is
+        /// stored under the msg read so far, so it has to come after msg.
+        /// </summary>
+        private static void CheckVoiceFile(string file)
+        {
+            FLDataFile ini = Checker.LoadIni(file, false);
+            if (ini == null)
+                return;
+            bool inVoice = false;
+            foreach (var section in ini.sections)
+            {
+                string name = section.sectionName.ToLower();
+                if (name == "voice")
+                {
+                    inVoice = true;
+                    continue;
+                }
+                if (name != "sound" && name != "voicesound")
+                    continue;
+                if (!inVoice)
+                {
+                    Logger.WLog(string.Format("{0}:{1}: The [{2}] isn't in a [Voice]! The game warns and ignores it.", file, Util.GetSectionIdentifier(section), section.sectionName));
+                    continue;
+                }
+                bool hasMsg = section.settings.Any(st => st.NumValues() > 0 && st.settingName.ToLower() == "msg");
+                bool gotMsg = false;
+                foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                {
+                    switch (setting.settingName.ToLower())
+                    {
+                        case "msg":
+                            gotMsg = true;
+                            break;
+                        case "file":
+                            if (hasMsg && !gotMsg)
+                                Logger.LogInvalidValue(file, setting, "Has to come after msg! The message doesn't get the sound otherwise.");
+                            break;
+                        case "priority":
+                        case "attenuation":
+                        case "duration":
+                            break;
+                        default:
+                            Logger.LogInvalidValue(file, setting, "Unknown voice [" + section.sectionName + "] key! The game warns about it.", setting.settingName, LogLevel.warning);
+                            break;
+                    }
+                }
+                if (!hasMsg)
+                    Logger.ELog(string.Format("{0}:{1}: The [{2}] has no msg! The game reports an error and ignores it.", file, Util.GetSectionIdentifier(section), section.sectionName));
             }
         }
 
@@ -56,7 +162,8 @@ namespace FLScanIE
                 FLDataFile ini = Checker.LoadIni(voiceFile, false);
                 if (ini == null)
                     continue;
-                var allSettings = ini.sections.SelectMany(s => s.settings).Where(s => s.sectionName.ToLower() == "sound" || s.sectionName.ToLower() == "voice").ToArray();
+                // The game also reads [VoiceSound] as a [Sound] of the [Voice] before it (freelancer.exe)
+                var allSettings = ini.sections.SelectMany(s => s.settings).Where(s => s.sectionName.ToLower() == "sound" || s.sectionName.ToLower() == "voicesound" || s.sectionName.ToLower() == "voice").ToArray();
                 voiceMsgs.AddRange(allSettings.Where(s => s.settingName == "msg").Select(s => s.Str(0).ToLower()).ToArray());
                 voiceNicks.AddRange(allSettings.Where(s => s.settingName == "nickname").Select(s => s.Str(0).ToLower()).ToArray());
             }

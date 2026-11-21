@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -22,6 +22,10 @@ namespace FLScanIE
 
         private static string[] effectTypes;
         private static string[] debrisNicknames;
+        // The [IGraph] nicknames of the igraph files (lowercase), or null if none of them could be read
+        private static HashSet<string> graphNicks;
+        // The [LightAnim] names of fx\lightanim.ini (lowercase), or null if the file isn't on disk
+        private static HashSet<string> lightAnimNames;
 
         public static void CheckFX()
         {
@@ -121,7 +125,7 @@ namespace FLScanIE
                         if (!DebrisExists(effect.Str(0)))
                             Logger.LogInvalidValue(file, effect, "Debris doesn't exist!");
                         break;
-                    case "progress":
+                    case "process":
                         string str = effect.Str(0).ToLower();
                         if (str != "shatter" && str != "disappear" && str != "none")
                             Logger.LogInvalidValue(file, effect, "Has to be shatter, disappear or none.");
@@ -143,6 +147,10 @@ namespace FLScanIE
                         if (!EffectExists(debr.Str(0)))
                             Logger.LogInvalidValue(file, debr, "Effect doesn't exist!");
                         break;
+                    case "death_method": // The client keeps exploding for other values
+                        if (debr.Str(0).ToLower() != "exploding" && debr.Str(0).ToLower() != "vanishing")
+                            Logger.LogInvalidValue(file, debr, "Has to be exploding or vanishing!");
+                        break;
                 }
             }
         }
@@ -156,6 +164,34 @@ namespace FLScanIE
             {
                 if (!EffectExists(fuseEffect.Str(0)))
                     Logger.LogInvalidValue(file, fuseEffect, "Effect doesn't exist!");
+            }
+
+            foreach (var setting in ini.GetSettings("start_explosion", "explosion").Where(s => s.NumValues() > 0))
+            {
+                if (!ExplosionExists(setting.Str(0)))
+                    Logger.LogInvalidValue(file, setting, "Explosion doesn't exist!");
+            }
+            foreach (var setting in ini.GetSettings("ignite_fuse", "fuse").Where(s => s.NumValues() > 0))
+            {
+                if (!FuseExists(setting.Str(0)))
+                    Logger.LogInvalidValue(file, setting, "Fuse doesn't exist!");
+            }
+            // The server compares fate case-sensitively and keeps the default for other values
+            foreach (var setting in ini.GetSettings("destroy_group", "fate").Where(s => s.NumValues() > 0))
+            {
+                if (setting.Str(0) != "debris" && setting.Str(0) != "disappear")
+                    Logger.LogInvalidValue(file, setting, "Has to be debris or disappear (lowercase)!");
+            }
+            foreach (var setting in ini.GetSettings("destroy_hp_attachment", "fate").Where(s => s.NumValues() > 0))
+            {
+                if (setting.Str(0) != "debris" && setting.Str(0) != "disappear" && setting.Str(0) != "loot")
+                    Logger.LogInvalidValue(file, setting, "Has to be debris, disappear or loot (lowercase)!");
+            }
+            // Anything but absolute is relative
+            foreach (var setting in ini.sections.SelectMany(sec => sec.settings).Where(s => s.settingName.ToLower() == "damage_type" && s.NumValues() > 0))
+            {
+                if (setting.Str(0).ToLower() != "absolute" && setting.Str(0).ToLower() != "relative")
+                    Logger.LogInvalidValue(file, setting, "Has to be absolute or relative! The game uses relative otherwise.", LogLevel.warning);
             }
         }
         
@@ -177,12 +213,58 @@ namespace FLScanIE
             FXChecks.fuseFiles = fuses[0];
             FXChecks.fuseNicks = fuses[1].Select(n => n.ToLower()).ToArray();
 
+            // The graphs (e.g. of light curves). Missing files are reported by Checker.Parse.
+            graphNicks = null;
+            foreach (var igraphFile in Checker.flIni.GetSettings("Data", "igraph").Where(s => s.NumValues() > 0))
+            {
+                FLDataFile ini = Checker.LoadIni(igraphFile.Str(0));
+                if (ini == null)
+                    continue;
+                if (graphNicks == null)
+                    graphNicks = new HashSet<string>();
+                foreach (var nick in ini.GetSettings("IGraph", "nickname").Where(s => s.NumValues() > 0))
+                    graphNicks.Add(nick.Str(0).Trim().ToLower());
+            }
+
+            // The client always loads fx\lightanim.ini; it isn't in freelancer.ini. Names are cut to 31 characters.
+            lightAnimNames = null;
+            if (Checker.FileExistsOnDisk(@"FX\lightanim.ini"))
+            {
+                FLDataFile ini = Checker.LoadIni(@"FX\lightanim.ini");
+                if (ini != null)
+                    lightAnimNames = new HashSet<string>(ini.GetSettings("LightAnim", "name").Where(s => s.NumValues() > 0)
+                        .Select(s => Truncate(s.Str(0).Trim().ToLower(), 31)));
+            }
+
             Logger.ILog(string.Format("Finished FX-Folder, found {0} effects, {1} explosions and {2} fuses", effectNicks.Length, explosionNicks.Length, fuseNicks.Length));
         }
 
         public static void AddExplosions(IEnumerable<string> explosions)
         {
             FXChecks.explosionNicks = FXChecks.explosionNicks.Union(explosions).ToArray();
+        }
+
+        /// <summary>
+        /// True if an [IGraph] of the igraph files has this nickname (the game ignores the case), or if they
+        /// couldn't be read.
+        /// </summary>
+        public static bool GraphExists(string nick)
+        {
+            return graphNicks == null || graphNicks.Contains(nick.Trim().ToLower());
+        }
+
+        private static string Truncate(string s, int length)
+        {
+            return s.Length > length ? s.Substring(0, length) : s;
+        }
+
+        /// <summary>
+        /// True if fx\lightanim.ini has a [LightAnim] with this name (the client ignores the case and uses at most 31
+        /// characters), or if the file isn't on disk.
+        /// </summary>
+        public static bool LightAnimExists(string name)
+        {
+            return lightAnimNames == null || lightAnimNames.Contains(Truncate(name.Trim().ToLower(), 31));
         }
 
         public static bool EffectExists(string nick)

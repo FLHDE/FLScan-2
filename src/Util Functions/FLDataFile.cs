@@ -391,6 +391,21 @@ namespace FLScanIE.Util_Functions
             }
         }
 
+        /// <summary>
+        /// Returns the section name if the line is a section header, otherwise null. Like the game's INI_Reader
+        /// (common.dll), a header is a line whose first non-blank character is '['; the name runs up to the
+        /// first ']' (or the end of the line) without trailing blanks, and the rest of the line is ignored. A name
+        /// that starts with ';' (e.g. [;Trigger]) means the section is commented out.
+        /// </summary>
+        static string ReadSectionHeader(string line)
+        {
+            line = line.TrimStart(' ', '	');
+            if (!line.StartsWith("["))
+                return null;
+            int end = line.IndexOf(']');
+            return (end == -1 ? line.Substring(1) : line.Substring(1, end - 1)).TrimEnd(' ', '	');
+        }
+
         string BufToString(byte[] buf, int offset)
         {
             // Find the null byte in the str
@@ -402,6 +417,8 @@ namespace FLScanIE.Util_Functions
         void LoadTextIni(byte[] buf, string fileName)
         {
             Section sec = null;
+            // True while reading the keys of a commented-out section, which the game skips
+            bool skipSection = false;
 
             try
             {
@@ -410,6 +427,21 @@ namespace FLScanIE.Util_Functions
                 string strLine = sr.ReadLine(); lineNumber++;
                 while (strLine != null)
                 {
+                    string sectionName = ReadSectionHeader(strLine);
+                    if (sectionName != null)
+                    {
+                        skipSection = sectionName.StartsWith(";");
+                        if (!skipSection)
+                        {
+                            sec = new Section();
+                            sec.sectionName = sectionName;
+                            sections.Add(sec);
+                        }
+                        strLine = "";
+                    }
+                    else if (skipSection)
+                        strLine = "";
+
                     // Strip comments at the end of the line.
                     int commentStartIdx = strLine.IndexOf(';');
                     if (commentStartIdx != -1)
@@ -419,55 +451,45 @@ namespace FLScanIE.Util_Functions
 
                     if (strLine != "" && strLine[0] != '#' && strLine[0] != ';')
                     {
-                        if (strLine.StartsWith("[") && strLine.EndsWith("]"))
+                        // Create a dummy section for files with out a [] section.
+                        if (sec == null)
                         {
-                            string sectionName = strLine.Substring(1, strLine.Length - 2);
                             sec = new Section();
-                            sec.sectionName = sectionName;
+                            sec.sectionName = "ROOT";
                             sections.Add(sec);
                         }
-                        else
+
+                        // Parse the damn line.
+                        if (strLine != "")
                         {
-                            // Create a dummy section for files with out a [] section.
-                            if (sec == null)
+                            string[] keyPair = strLine.Split(new char[] { '=' }, 2);
+                            string settingName = keyPair[0].Trim();
+                            string desc = fileName+":"+lineNumber+" '" + strLine +"'";
+
+                            Setting set;
+                            if (multiFields)
                             {
-                                sec = new Section();
-                                sec.sectionName = "ROOT";
-                                sections.Add(sec);
+                                string[] values = new string[0];
+                                if (keyPair.Length > 1)
+                                    values = keyPair[1].Trim().Split(new char[] { ',' });
+
+                                object[] settingValues = new object[values.Length];
+                                for (int i = 0; i < values.Length; i++)
+                                    settingValues[i] = values[i].Trim();
+
+                                set = new Setting(fileName, sec.sectionName, settingName, desc, settingValues);
+                            }
+                            else
+                            {
+                                object[] settingValues = new object[0];
+                                if (keyPair.Length > 1)
+                                    settingValues = new string[] { keyPair[1].Trim() };
+                                set = new Setting(fileName, sec.sectionName, settingName, desc, settingValues);
                             }
 
-                            // Parse the damn line.
-                            if (strLine != "")
-                            {
-                                string[] keyPair = strLine.Split(new char[] { '=' }, 2);
-                                string settingName = keyPair[0].Trim();
-                                string desc = fileName+":"+lineNumber+" '" + strLine +"'";
 
-                                Setting set;
-                                if (multiFields)
-                                {
-                                    string[] values = new string[0];
-                                    if (keyPair.Length > 1)
-                                        values = keyPair[1].Trim().Split(new char[] { ',' });
-
-                                    object[] settingValues = new object[values.Length];
-                                    for (int i = 0; i < values.Length; i++)
-                                        settingValues[i] = values[i].Trim();
-
-                                    set = new Setting(fileName, sec.sectionName, settingName, desc, settingValues);
-                                }
-                                else
-                                {
-                                    object[] settingValues = new object[0];
-                                    if (keyPair.Length > 1)
-                                        settingValues = new string[] { keyPair[1].Trim() };
-                                    set = new Setting(fileName, sec.sectionName, settingName, desc, settingValues);
-                                }
-
-
-                                set.LineNumber = lineNumber;
-                                sec.settings.Add(set);
-                            }
+                            set.LineNumber = lineNumber;
+                            sec.settings.Add(set);
                         }
                     }
 

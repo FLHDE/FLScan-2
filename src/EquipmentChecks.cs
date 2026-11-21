@@ -12,8 +12,6 @@ namespace FLScanIE
     public static class EquipmentChecks
     {
         /*
-TODO: check if [Muniton] hp_trail_parent exists in [Gun] DA_archetype
-TODO: check if [Muniton] weapon_type equals [Gun] weapon_type
 TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't referenced in freelancer.ini
          */
 
@@ -44,7 +42,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             Logger.ILog("Checking Equipment-Folder");
             var shipHulls = new Dictionary<string, string>();
             Util.RunChecks(CheckEquipmentFile, equipmentFiles);
+            CheckEquipmentReadOrder();
             Util.RunChecks(CheckGoodFile, goodFiles);
+            CheckGoodReadOrder();
             Util.RunChecks(CheckMarketFile, marketFiles);
             Util.RunChecks(CheckWeaponModFile, weaponModFiles);
             // commodities_per_faction.ini isn't referenced by freelancer.ini, but it's always loaded by the game
@@ -92,14 +92,135 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
             }
         }
 
-        private static string[] hasIDS = new string[] { "Commodity", "ShieldGenerator", "Engine", "CounterMeasure", "CounterMeasureDropper", "RepairKit", "Scanner", "ShieldBattery", "Tractor", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition"}.Select(s => s.ToLower()).ToArray();
-        private static string[] hasArchetype = new string[] { "LootCrate", "Shield", "CargoPod", "ShieldGenerator", "Power", "CounterMeasure", "CloakingDevice", "Gun", "Mine", "MineDropper", "Munition", "CounterMeasureDropper" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasMaterial = new string[] { "LootCrate", "CargoPod", "ShieldGenerator", "Power", "CounterMeasureDropper", "CloakingDevice", "Gun", "Mine", "MineDropper" }.Select(s => s.ToLower()).ToArray();
+        /// <summary>
+        /// The kinds of equipment that common.dll reads from the equipment files (lowercase). They all read the keys
+        /// of an archetype (ids_name, ids_info, explosion_arch, DA_archetype) and the client reads material_library.
+        /// </summary>
+        public static readonly string[] EquipmentKinds = { "armor", "attachedfx", "internalfx", "power", "thruster", "shield",
+            "shieldgenerator", "shieldbattery", "repairkit", "repairdroid", "countermeasure", "countermeasuredropper", "gun",
+            "minedropper", "mine", "munition", "scanner", "tractor", "engine", "cloakingdevice", "tradelane", "cargopod",
+            "lootcrate", "commodity", "light" };
+        // The kinds that are attached equipment in common.dll, which also read separation_explosion, debris_type and HP_child
+        private static readonly string[] attachedEquipmentKinds = { "shield", "shieldgenerator", "thruster", "gun", "minedropper",
+            "countermeasuredropper", "cargopod", "cloakingdevice" };
         private static string[] hasLootAppearance = new string[] { "Commodity", "CounterMeasure", "RepairKit", "ShieldBattery", "Mine", "Munition" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasSeparationExplosion = new string[] { "CounterMeasureDropper", "Gun", "MineDropper", "ShieldGenerator", "Thruster", "CollisionGroup" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasExplosionArch = new string[] { "LootCrate", "CargoPod", "Mine", "Munition", "Ship", "Asteroid", "AsteroidMine", "DynamicAsteroid", "Solar" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasDebris = new string[] { "CargoPod", "ShieldGenerator", "CounterMeasureDropper", "Gun", "MineDropper" }.Select(s => s.ToLower()).ToArray();
-        private static string[] hasHpChild = new string[] { "CargoPod", "Shield", "ShieldGenerator", "CounterMeasureDropper", "CloakingDevice", "Gun", "MineDropper" }.Select(s => s.ToLower()).ToArray();
+
+        /// <summary>
+        /// Checks a list of hardpoint types, like hp_gun_type. The game reads every value of every line, and skips the
+        /// types it doesn't know.
+        /// </summary>
+        private static void CheckHpTypeList(string file, FLDataFile.Section section, string key)
+        {
+            foreach (var setting in section.GetSettings(key))
+            {
+                foreach (string hpType in setting.values.Select(v => v.ToString().Trim()).TakeWhile(v => v != ""))
+                {
+                    if (!HpTypeExists(hpType))
+                        Logger.LogInvalidValue(file, setting, "Invalid hardpoint-type!", hpType);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Common.dll looks up inherit, loot_appearance and pod_appearance while it reads the equipment files, in
+        /// the order of freelancer.ini, so they have to name equipment that is defined earlier. inherit copies
+        /// nothing from equipment of another kind, and pod_appearance is ignored if it isn't a [CargoPod].
+        /// </summary>
+        private static void CheckEquipmentReadOrder()
+        {
+            // The kind of each equipment defined so far (the first definition is used)
+            var defined = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in equipmentFiles)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                foreach (var section in ini.sections)
+                {
+                    string kind = section.sectionName.ToLower();
+                    if (!EquipmentKinds.Contains(kind))
+                        continue;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key != "inherit" && key != "loot_appearance" && key != "pod_appearance")
+                            continue;
+                        string target = setting.Str(0);
+                        string targetKind;
+                        if (!defined.TryGetValue(target, out targetKind))
+                        {
+                            if (EquipExists(target))
+                                Logger.LogInvalidValue(file, setting, "Has to be defined before this equipment! The game looks it up while it reads the file.");
+                            else if (key == "inherit") // The other keys are reported by CheckEquipmentFile
+                                Logger.LogInvalidValue(file, setting, "Equipment doesn't exist!");
+                        }
+                        else if (key == "inherit" && targetKind != kind)
+                            Logger.LogInvalidValue(file, setting, "Is a [" + targetKind + "], so the game copies nothing from it!", LogLevel.warning);
+                    }
+                    string nick = Util.TryGetStrSetting(section, "nickname");
+                    if (nick != null && !defined.ContainsKey(nick))
+                        defined[nick] = kind;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks the goods the way common.dll reads them, in the order of freelancer.ini:
+        /// - hull is looked up among the goods read so far, and the game crashes if it isn't one of them.
+        /// - A commodity or equipment good without equipment crashes the game.
+        /// - good_buy_price, bad_buy_price, good_sell_price and bad_sell_price multiply the price read so far, so
+        ///   before price they are lost.
+        /// - The game warns about a commodity or equipment good whose nickname isn't its equipment, and about [GoodType].
+        /// </summary>
+        private static void CheckGoodReadOrder()
+        {
+            var defined = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string[] priceFactors = { "good_buy_price", "bad_buy_price", "good_sell_price", "bad_sell_price" };
+            foreach (string file in goodFiles)
+            {
+                FLDataFile ini = Checker.LoadIni(file);
+                if (ini == null)
+                    continue; // Reported by Checker.Parse
+                foreach (var section in ini.sections)
+                {
+                    if (section.sectionName.ToLower() == "goodtype")
+                    {
+                        Logger.WLog(string.Format("{0}:{1}: [GoodType] is obsolete. The game ignores it.", file, Util.GetSectionIdentifier(section)));
+                        continue;
+                    }
+                    if (section.sectionName.ToLower() != "good")
+                        continue;
+
+                    bool gotPrice = false;
+                    foreach (var setting in section.settings.Where(st => st.NumValues() > 0))
+                    {
+                        string key = setting.settingName.ToLower();
+                        if (key == "price")
+                            gotPrice = true;
+                        else if (!gotPrice && priceFactors.Contains(key))
+                            Logger.LogInvalidValue(file, setting, "Has to come after price! It multiplies the price, which is 0 before that.");
+                        else if (key == "hull" && !defined.Contains(setting.Str(0)))
+                            Logger.LogInvalidValue(file, setting, GoodExists(setting.Str(0))
+                                ? "Has to be defined before this good! The game crashes otherwise."
+                                : "Good doesn't exist! The game crashes.");
+                    }
+
+                    string nick = Util.TryGetStrSetting(section, "nickname");
+                    string category = Util.TryGetStrSetting(section, "category");
+                    string equipment = Util.TryGetStrSetting(section, "equipment");
+                    if (category != null && (category.ToLower() == "commodity" || category.ToLower() == "equipment"))
+                    {
+                        if (equipment == null)
+                            Logger.ELog(string.Format("{0}:{1}: The {2} good {3} has no equipment! The game crashes.", file,
+                                Util.GetSectionIdentifier(section), category.ToLower(), nick));
+                        else if (nick != null && !nick.Equals(equipment, StringComparison.OrdinalIgnoreCase))
+                            Logger.LogInvalidValue(file, section.GetSetting("equipment"), "Isn't the nickname of the good! The game warns about it.", LogLevel.warning);
+                    }
+                    if (nick != null)
+                        defined.Add(nick);
+                }
+            }
+        }
 
         private static void CheckEquipmentFile(string file)
         {
@@ -112,22 +233,35 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     nick = nick.ToLower();
                 string cat = section.sectionName.ToLower();
 
-                if(hasIDS.Contains(cat))
+                if (EquipmentKinds.Contains(cat))
                 {
                     Util.CheckIDInfo(section, "ids_info", nick, file);
                     Util.CheckIDName(section, "ids_name", nick, file);
+
+                    // A missing DA_archetype is reported by ParseEquipFile
+
+                    // The client loads every material_library
+                    foreach (var mat in section.GetSettings("material_library").Where(m => m.NumValues() > 0))
+                    {
+                        if (!Checker.FileExists(mat.Str(0)))
+                            Logger.LogFileNotFound(file, mat);
+                    }
+
+                    string expl = Util.TryGetStrSetting(section, "explosion_arch");
+                    if (expl != null && !FXChecks.ExplosionExists(expl))
+                        Logger.LogInvalidValue(file, section.GetSetting("explosion_arch"), "Explosion doesn't exist!");
+
+                    foreach (var type in section.GetSettings("type"))
+                        Util.CheckObjectType(file, type);
                 }
-                if (hasArchetype.Contains(cat))
+                // The launchers flash a light animation of fx\lightanim.ini when they fire (freelancer.exe)
+                if (cat == "gun" || cat == "minedropper" || cat == "countermeasuredropper")
                 {
-                    string arch = Util.TryGetStrSetting(section, "da_archetype");
-                    if (arch != null && !Checker.FileExists(arch))
-                        Logger.LogFileNotFound(file, section.GetSetting("da_archetype"));
-                }
-                if (hasMaterial.Contains(cat))
-                {
-                    string mat = Util.TryGetStrSetting(section, "material_library");
-                    if (mat != null && !Checker.FileExists(mat))
-                        Logger.LogFileNotFound(file, section.GetSetting("material_library"));
+                    foreach (var lightAnim in section.GetSettings("light_anim").Where(s => s.NumValues() > 0))
+                    {
+                        if (!FXChecks.LightAnimExists(lightAnim.Str(0)))
+                            Logger.LogInvalidValue(file, lightAnim, "Light animation doesn't exist in fx\\lightanim.ini!");
+                    }
                 }
                 if (hasLootAppearance.Contains(cat))
                 {
@@ -135,27 +269,17 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     if (app != null && !EquipExists(app, "lootcrate"))
                         Logger.LogInvalidValue(file, section.GetSetting("loot_appearance"), "LootCrate doesn't exist!");
                 }
-                if (hasSeparationExplosion.Contains(cat))
+                if (attachedEquipmentKinds.Contains(cat))
                 {
                     // This refers to an [Explosion], e.g. sever_debris in fx\explosions.ini
                     string expl = Util.TryGetStrSetting(section, "separation_explosion");
                     if (expl != null && !FXChecks.ExplosionExists(expl))
                         Logger.LogInvalidValue(file, section.GetSetting("separation_explosion"), "Explosion doesn't exist!");
-                }
-                if (hasExplosionArch.Contains(cat))
-                {
-                    string expl = Util.TryGetStrSetting(section, "explosion_arch");
-                    if (expl != null && !FXChecks.ExplosionExists(expl))
-                        Logger.LogInvalidValue(file, section.GetSetting("explosion_arch"), "Explosion doesn't exist!");
-                }
-                if (hasDebris.Contains(cat))
-                {
+
                     string debris = Util.TryGetStrSetting(section, "debris_type");
                     if (debris != null && !FXChecks.DebrisExists(debris))
                         Logger.LogInvalidValue(file, section.GetSetting("debris_type"), "Debris doesn't exist!");
-                }
-                if (hasHpChild.Contains(cat))
-                {
+
                     string hp_child = Util.TryGetStrSetting(section, "hp_child");
                     if (hp_child != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(hp_child))
                         Logger.LogHardpoint(file, section.GetSetting("hp_child"));
@@ -201,7 +325,6 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string sh_collapse_snd = Util.TryGetStrSetting(section, "shield_collapse_sound");
                         string sh_rebuilt_snd = Util.TryGetStrSetting(section, "shield_rebuilt_sound");
                         string sh_collapse_eff = Util.TryGetStrSetting(section, "shield_collapse_particle");
-                        string sh_hit_eff = Util.TryGetStrSetting(section, "shield_hit_eff");
 
                         if (sh_collapse_snd != null && !AudioChecks.SoundExists(sh_collapse_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("shield_collapse_sound"), "Sound doesn't exist!");
@@ -209,19 +332,32 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("shield_rebuilt_sound"), "Sound doesn't exist!");
                         if (sh_collapse_eff != null && !FXChecks.EffectExists(sh_collapse_eff))
                             Logger.LogInvalidValue(file, section.GetSetting("shield_collapse_particle"), "Effect doesn't exist!");
-                        if (sh_hit_eff != null && !FXChecks.EffectExists(sh_hit_eff))
-                            Logger.LogInvalidValue(file, section.GetSetting("shield_hit_eff"), "Effect doesn't exist!");
+                        CheckHpTypeList(file, section, "hp_shield_type");
+                        // shield_hit_effects = threshold, effect, ... (repeatable)
+                        foreach (var hitEffects in section.GetSettings("shield_hit_effects"))
+                        {
+                            for (int i = 1; i < hitEffects.NumValues(); i++)
+                            {
+                                if (hitEffects.Str(i) != "" && !FXChecks.EffectExists(hitEffects.Str(i)))
+                                    Logger.LogInvalidValue(file, hitEffects, "Effect doesn't exist!", hitEffects.Str(i));
+                            }
+                        }
                         break;
                     case "tradelane":
                         foreach (var setting in section.settings)
                         {
                             switch (setting.settingName)
                             {
+                                // The effects of the player's and other ships, and of the ring (freelancer.exe)
+                                case "tl_player_enter":
                                 case "tl_player_travel":
                                 case "tl_player_splash":
+                                case "tl_player_exit":
+                                case "tl_player_disrupt":
                                 case "tl_ring_active":
                                 case "tl_ship_disrupt":
                                 case "tl_ship_enter":
+                                case "tl_ship_splash":
                                 case "tl_ship_exit":
                                 case "tl_ship_travel":
                                     if(!FXChecks.EffectExists(setting.Str(0)))
@@ -270,13 +406,9 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         }
                         break;
                     case "light":
-                        string li_inherit = Util.TryGetStrSetting(section, "inherit");
-                        if (li_inherit != null && !EquipExists(li_inherit, "light"))
-                            Logger.LogInvalidValue(file, section.GetSetting("inherit"), "Light not found!");
-                        break;
+                        break; // inherit: see CheckEquipmentReadOrder
                     case "countermeasuredropper":
                         string cmd_particle = Util.TryGetStrSetting(section, "flash_particle_name");
-                        string cmd_light_anim = Util.TryGetStrSetting(section, "light_anim"); // TODO
                         string cmd_archtype = Util.TryGetStrSetting(section, "projectile_archetype");
 
                         if (cmd_particle != null && !FXChecks.EffectExists(cmd_particle))
@@ -310,19 +442,16 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     case "gun":
                     /*
 [Gun] light_anim => [LightAnim] TODO
-[Gun] projectile_archetype => TODO save reference for munition checks
                      */
                         string gun_snd = Util.TryGetStrSetting(section, "dry_fire_sound");
                         string gun_particle = Util.TryGetStrSetting(section, "flash_particle_name");
-                        string gun_hpType = Util.TryGetStrSetting(section, "hp_gun_type");
                         string gun_projArch = Util.TryGetStrSetting(section, "projectile_archetype");
 
                         if (gun_snd != null && !AudioChecks.SoundExists(gun_snd))
                             Logger.LogInvalidValue(file, section.GetSetting("dry_fire_sound"), "Sound doesn't exist!");
                         if(gun_particle != null && !FXChecks.EffectExists(gun_particle))
                             Logger.LogInvalidValue(file, section.GetSetting("flash_particle_name"), "Effect doesn't exist!");
-                        if(gun_hpType != null && !HpTypeExists(gun_hpType))
-                            Logger.LogInvalidValue(file, section.GetSetting("hp_gun_type"), "Invalid hardpoint-type!");
+                        CheckHpTypeList(file, section, "hp_gun_type");
                         if (gun_projArch != null && !EquipExists(gun_projArch, "munition"))
                             Logger.LogInvalidValue(file, section.GetSetting("projectile_archetype"), "Munition doesn't exist!");
 
@@ -352,6 +481,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         string mun_motor = Util.TryGetStrSetting(section, "motor");
                         string mun_snd = Util.TryGetStrSetting(section, "one_shot_sound");
                         string mun_seeker = Util.TryGetStrSetting(section, "seeker");
+                        string mun_weaponType = Util.TryGetStrSetting(section, "weapon_type");
+                        string mun_trailParent = Util.TryGetStrSetting(section, "hp_trail_parent");
 
                         if(mun_const_eff != null && !FXChecks.EffectExists(mun_const_eff))
                             Logger.LogInvalidValue(file, section.GetSetting("const_effect"), "Effect not found!");
@@ -365,6 +496,12 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                             Logger.LogInvalidValue(file, section.GetSetting("one_shot_sound"), "Sound doesn't exist!");
                         if (mun_seeker != null && (mun_seeker.ToLower() != "dumb" && mun_seeker.ToLower() != "lock"))
                             Logger.LogInvalidValue(file, section.GetSetting("seeker"), "Must be DUMB or LOCK!");
+                        // The damage modifiers of the [WeaponType] in WeaponModDB.ini
+                        if (mun_weaponType != null && !WeaponTypeExists(mun_weaponType))
+                            Logger.LogInvalidValue(file, section.GetSetting("weapon_type"), "Weapon type doesn't exist!");
+                        // The trail (e.g. a missile's exhaust) is attached to this hardpoint of the munition's model
+                        if (mun_trailParent != null && HasEquipUtf(cat, nick) && !equipUtf[cat][nick].HardpointExists(mun_trailParent))
+                            Logger.LogHardpoint(file, section.GetSetting("hp_trail_parent"));
                         break;
                     case "lod":
                         string obj = Util.TryGetStrSetting(section, "obj");
@@ -373,6 +510,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         break;
                     case "armor":
                     case "internalfx":
+                    case "repairdroid":
                     case "motor": // TODO
                         break;
                     default:
@@ -418,10 +556,13 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         shop_archetype = Util.TryGetStrSetting(section, "shop_archetype");
                         msg_id_prefix = Util.TryGetStrSetting(section, "msg_id_prefix");
 
+                        // name and info_desc are aliases of ids_name and ids_info (common.dll)
                         Util.CheckIDName(section, "ids_name", nick, file);
+                        Util.CheckIDName(section, "name", nick, file);
                         Util.CheckIDInfo(section, "ids_info", nick, file);
+                        Util.CheckIDInfo(section, "info_desc", nick, file);
 
-                        if (category != null && !GoodCategories.Contains(category))
+                        if (category != null && !GoodCategories.Contains(category.ToLower()))
                             Logger.LogInvalidValue(file, section.GetSetting("category"), "Not a valid category!");
 
                         if (equipment != null && !EquipExists(equipment))
@@ -462,7 +603,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                 {
                                     string hp, equip;
 
-                                    if (addons[i].Length == 3)
+                                    // addon = equipment, hardpoint or internal[, count[, mid or high]] (common.dll)
+                                    if (addons[i].Length >= 2 && addons[i].Length <= 4)
                                     {
                                         equip = addons[i][0];
                                         hp = addons[i][1];
@@ -471,7 +613,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                             Logger.LogInvalidValue(file, addonSettings[i], "Equip doesn't exist!", equip);
                                         if (Checker.DisableUTF)
                                             break;
-                                        if (hp != "internal")
+                                        if (hp.ToLower() != "internal")
                                         {
                                             if (shipUtf != null && !shipUtf.HardpointExists(hp)
                                                 || shipUtf == null && !Checker.AssumeVanillaFilesExist)
@@ -480,7 +622,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                                             
                                     }
                                     else
-                                        Logger.LogArgCount(file, addonSettings[i], 3);
+                                        Logger.LogArgCount(file, addonSettings[i], 2, 3, 4);
                                 }
                                 break;
                             case "equipment":
@@ -504,6 +646,8 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if (msg_id_prefix != null && !AudioChecks.VoiceMsgExists(msg_id_prefix))
                             Logger.LogInvalidValue(file, section.GetSetting("msg_id_prefix"), "Msg doesn't exist!");
 
+                        break;
+                    case "goodtype": // Obsolete, see CheckGoodReadOrder
                         break;
                     default:
                         Logger.WLog(string.Format("Unexpected section {0} in file {1}", section.sectionName, file));
@@ -530,49 +674,58 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
 
                         if(!UniverseChecks.BaseExists(Base))
                             Logger.LogInvalidValue(file, section.GetSetting("base"), "Base doesn't exist!");
+                        int baseIndex = section.settings.IndexOf(section.GetSetting("base"));
 
                         var MarketGoods = section.GetSettings("MarketGood").ToArray();
                         foreach (var marketGood in MarketGoods)
                         {
-                            if (marketGood.NumValues() < 7)
+                            if (marketGood.NumValues() == 0)
                             {
-                                Logger.LogArgCount(file, marketGood, 7);
+                                Logger.LogArgCount(file, marketGood, 1);
                                 continue;
                             }
 
+                            // MarketGood = good, level, rep, min, max, transaction type, price multiplier.
+                            // Everything after the good is optional; an empty value keeps its default (common.dll).
                             string[] args = marketGood.values.Select(s => s.ToString().Trim()).ToArray();
-
                             string equipNick = args[0];
-                            int rank;
-                            float rep;
-                            int min, max, _noSell;
-                            bool noSell;
-                            float multip;
+                            Func<int, string> arg = i => i < args.Length && args[i] != "" ? args[i] : null;
+                            float level = 0, rep = -1, multip = 1;
+                            int min = 0, max = 0, transactionType = 0;
 
-                            if (!int.TryParse(args[1], out rank))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rank! Has to be a number!", args[1]);
-                            if (!float.TryParse(args[2].Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out rep))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be a number!", args[2]);
-                            else if(rep < -1 || rep > 1)
-                                Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be between -1 and 1!", args[2]);
-                            if (!int.TryParse(args[3], out min))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid min! Has to be a number!", args[3]);
-                            if (!int.TryParse(args[4], out max))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid max! Has to be a number!", args[4]);
-                            if (!int.TryParse(args[5], out _noSell))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid noSell! Has to be 1 or 0!", args[5]);
-                            else
+                            if (arg(1) != null && !float.TryParse(arg(1), NumberStyles.Float, CultureInfo.InvariantCulture, out level))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid level! Has to be a number!", arg(1));
+                            if (arg(2) != null)
                             {
-                                if (_noSell == 0) noSell = false;
-                                else if (_noSell == 1) noSell = true;
-                                else Logger.LogInvalidValue(file, marketGood, "Invalid noSell! Has to be 1 or 0!", args[5]);
+                                if (!float.TryParse(arg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out rep))
+                                    Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be a number!", arg(2));
+                                else if (rep < -1 || rep > 1)
+                                    Logger.LogInvalidValue(file, marketGood, "Invalid rep! Has to be between -1 and 1!", arg(2));
                             }
-                            if (!float.TryParse(args[6], out multip))
-                                Logger.LogInvalidValue(file, marketGood, "Invalid multiplier! Has to be a number!", args[6]);
+                            if (arg(3) != null && !int.TryParse(arg(3), out min))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid min! Has to be a number!", arg(3));
+                            if (arg(4) != null && !int.TryParse(arg(4), out max))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid max! Has to be a number!", arg(4));
+                            // 0: the base buys and sells it, 1: the base only buys it, 2: the base only sells it
+                            if (arg(5) != null && (!int.TryParse(arg(5), out transactionType) || transactionType < 0 || transactionType > 2))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid transaction type! Has to be 0, 1 or 2!", arg(5));
+                            if (arg(6) != null && !float.TryParse(arg(6), NumberStyles.Float, CultureInfo.InvariantCulture, out multip))
+                                Logger.LogInvalidValue(file, marketGood, "Invalid multiplier! Has to be a number!", arg(6));
 
                             if (!GoodExists(equipNick))
                                 Logger.LogInvalidValue(file, marketGood, "Equipment doesn't exist!", equipNick);
+
+                            // Common.dll only adds a line once a base line came before it, and drops a line whose
+                            // values are all the defaults (level 0, rep -1, min 0, max 0, type 0, multiplier 1)
+                            if (section.settings.IndexOf(marketGood) < baseIndex)
+                                Logger.LogInvalidValue(file, marketGood, "The game ignores this line, because it comes before the base line!", LogLevel.warning);
+                            else if (level == 0 && rep == -1 && min == 0 && max == 0 && transactionType == 0 && multip == 1)
+                                Logger.LogInvalidValue(file, marketGood, "The game ignores this line, because all its values are the defaults!", LogLevel.warning);
                         }
+
+                        // Common.dll warns about any other key
+                        foreach (var setting in section.settings.Where(st => st.settingName.ToLower() != "base" && st.settingName.ToLower() != "marketgood"))
+                            Logger.LogInvalidValue(file, setting, "Unknown key! The game ignores it.", setting.settingName, LogLevel.warning);
                         break;
                     default:
                         Logger.WLog(string.Format("Unexpected section {0} in file {1}", section.sectionName, file));
@@ -619,7 +772,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                 FLDataFile ini = Checker.LoadIni(weaponModFile);
                 if (ini == null)
                     continue;
-                weaponTypes.AddRange(ini.GetSettings("WeaponType", "nickname").Select(s => s.Str(0)));
+                weaponTypes.AddRange(ini.GetSettings("WeaponType", "nickname").Select(s => s.Str(0).Trim().ToLower()));
             }
 
             AllEquipNicks = equipNicks.SelectMany(n => n.Value).ToArray();
@@ -651,6 +804,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                     case "shieldgenerator":
                     case "shieldbattery":
                     case "repairkit":
+                    case "repairdroid":
                     case "countermeasure":
                     case "countermeasuredropper":
                     case "gun":
@@ -673,7 +827,7 @@ TODO: there are references to [LightAnim]-nicknames, but lightanim.ini isn't ref
                         if(!equipUtf.ContainsKey(cat))
                             equipUtf[cat] = new Dictionary<string, UtfFile>();
 
-                        var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", "da_archetype", false);
+                        var nickUtfTuple = Util.ParseNickUTF(Checker.flDataPath, file, section, "nickname", Util.DaArchetypeKey(section), false);
                         if (nickUtfTuple.Nick == null)
                             break;
                         nickUtfTuple.Nick = nickUtfTuple.Nick.ToLower();
