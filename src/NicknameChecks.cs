@@ -198,6 +198,27 @@ namespace FLScanIE
         // Triggers can start active, and it isn't known whether random encounters can, so they aren't included.
         private static readonly string[] usedByReference = { "npc", "objlist", "metabehavior", "dialog", "msnloot", "msnsolar", "nnobjective" };
 
+        // The pilots that content.dll names itself (the solars of random missions)
+        private static readonly string[] builtInPilots = { "pilot_rm_solar_easiest", "pilot_rm_solar_easy", "pilot_rm_solar_hard", "pilot_rm_solar_hardest" };
+
+        /// <summary>
+        /// Everything that may refer to a pilot or pilot block (lowercase): the values of every INI in DATA except
+        /// nicknames, what the vanilla INIs the mod doesn't ship refer to, and the pilots the game names itself.
+        /// </summary>
+        private static HashSet<string> PilotReferences()
+        {
+            var refs = new HashSet<string>(builtInPilots);
+            string dataPath = Checker.flDataPath.TrimEnd('\\', '/') + "\\";
+            foreach (string path in Directory.GetFiles(Checker.flDataPath, "*.ini", SearchOption.AllDirectories))
+            {
+                IniFile file = Load(path.Substring(dataPath.Length));
+                if (file != null)
+                    refs.UnionWith(ReferencedValues(file));
+            }
+            refs.UnionWith(Checker.PilotRefsOfMissingVanillaFiles());
+            return refs;
+        }
+
         /// <summary>
         /// The values (trimmed, lowercase) of the settings of a file, except nicknames.
         /// </summary>
@@ -226,7 +247,9 @@ namespace FLScanIE
             CheckDuplicates("faction", Load(new[] { "initialworld.ini" }), new[] { "group" }, false, null);
             // Each kind of pilot block has its own nicknames. The game keeps the first block or pilot with a
             // nickname (std::map::insert in content.dll), and population pilots are loaded before story pilots.
-            CheckDuplicates("pilot", Load(new[] { @"MISSIONS\pilots_population.ini", @"MISSIONS\pilots_story.ini" }), null, true, UsesFirst);
+            var pilotRefs = PilotReferences();
+            CheckDuplicatesByType("pilot", Load(new[] { @"MISSIONS\pilots_population.ini", @"MISSIONS\pilots_story.ini" }), null, true, type => UsesFirst,
+                (type, nick) => pilotRefs.Contains(nick), "Nothing refers to this nickname, so neither one is used");
 
             foreach (string universeFile in DataFiles("universe"))
             {
@@ -252,7 +275,7 @@ namespace FLScanIE
                 var script = Load(new[] { file }).ToArray();
                 var referenced = script.Length == 0 ? new HashSet<string>() : ReferencedValues(script[0]);
                 CheckDuplicatesByType("mission", script, null, true, MissionDuplicateUsage,
-                    (type, nick) => !usedByReference.Contains(type) || referenced.Contains(nick));
+                    (type, nick) => !usedByReference.Contains(type) || referenced.Contains(nick), "Nothing in the mission refers to this nickname, so neither one is used");
             }
         }
 
@@ -264,16 +287,16 @@ namespace FLScanIE
         /// </summary>
         private static void CheckDuplicates(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, string usage)
         {
-            CheckDuplicatesByType(what, files, sectionNames, perSectionType, type => usage, null);
+            CheckDuplicatesByType(what, files, sectionNames, perSectionType, type => usage, null, null);
         }
 
         /// <summary>
         /// Like the other CheckDuplicates, but usage gives the message for each section type (lowercase), and is
         /// "" for the types that aren't checked here. If isReferenced (section type, lowercase nickname) is false,
-        /// nothing uses either definition, so the duplicate is a warning.
+        /// nothing uses either definition, so the duplicate is a warning that ends with unusedNote.
         /// </summary>
         private static void CheckDuplicatesByType(string what, IEnumerable<IniFile> files, string[] sectionNames, bool perSectionType, Func<string, string> usage,
-            Func<string, string, bool> isReferenced)
+            Func<string, string, bool> isReferenced, string unusedNote)
         {
             var first = new Dictionary<string, KeyValuePair<IniFile, FLDataFile.Section>>();
             foreach (IniFile file in files)
@@ -306,7 +329,7 @@ namespace FLScanIE
                     if (original.Key.OnDisk && SameSettings(original.Value, section))
                         Logger.LogDublicateValue(file.Path, nickSetting, message + " (an identical copy)", LogLevel.warning);
                     else if (isReferenced != null && !isReferenced(type, nickSetting.Str(0).Trim().ToLowerInvariant()))
-                        Logger.LogDublicateValue(file.Path, nickSetting, message + ". Nothing in the mission refers to this nickname, so neither one is used", LogLevel.warning);
+                        Logger.LogDublicateValue(file.Path, nickSetting, message + ". " + unusedNote, LogLevel.warning);
                     else
                         Logger.LogDublicateValue(file.Path, nickSetting, message);
                 }

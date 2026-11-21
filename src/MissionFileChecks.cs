@@ -66,6 +66,7 @@ namespace FLScanIE
             Util.RunChecks(CheckEmpathyFile, new[] { @"MISSIONS\empathy.ini" });
             Util.RunChecks(CheckNewsFile, new[] { @"MISSIONS\news.ini" });
             Util.RunChecks(CheckMBasesFile, new[] { @"MISSIONS\mbases.ini" });
+            Util.RunChecks(CheckKnowledgeMapFile, new[] { @"INTERFACE\knowledgemap.ini" });
             Util.RunCheck(CheckPilotFiles, "pilots");
             Util.RunChecks(CheckKillableSolarsFile, new[] { @"RANDOMMISSIONS\killablesolars.ini" });
             Util.RunChecks(CheckCriticalLootFile, new[] { @"RANDOMMISSIONS\vignettecriticalloot.ini" });
@@ -124,24 +125,232 @@ namespace FLScanIE
         }
 
         /// <summary>
-        /// mbases.ini: the factions, characters and rooms of each base.
+        /// Checks the ids of a text: it has to be a string or an infocard. Returns false if it isn't a number.
+        /// </summary>
+        private static bool CheckTextIds(string file, FLDataFile.Setting setting, int index, string message, LogLevel level)
+        {
+            uint ids;
+            if (!uint.TryParse(setting.Str(index).Trim(), out ids))
+            {
+                Logger.LogInvalidValue(file, setting, "Has to be a number!", setting.Str(index));
+                return false;
+            }
+            if (ids != 0 && !Infocards.IsInUnloadedDll(ids) && !Infocards.IsName(ids) && !Infocards.IsInfocard(ids))
+                Logger.LogInvalidValue(file, setting, message, setting.Str(index), level);
+            return true;
+        }
+
+        /// <summary>
+        /// interface\knowledgemap.ini, which freelancer.exe reads (FUN_00459470): Map = key, nickname, flags. When the
+        /// player learns the key, the client sets the visit flags of CreateID(nickname), or with flag 0x40 of the faction
+        /// (Reputation::get_id of the nickname, cut off after 15 characters). The keys are mostly ids, but many of them
+        /// have no text, also in vanilla, so they aren't checked.
+        /// </summary>
+        private static void CheckKnowledgeMapFile(string file)
+        {
+            foreach (var setting in Load(file).GetSettings("KnowledgeMapTable", "map"))
+            {
+                if (setting.NumValues() < 3)
+                {
+                    Logger.LogArgCount(file, setting, 3);
+                    continue;
+                }
+                int flags;
+                if (!int.TryParse(setting.Str(2).Trim(), out flags))
+                {
+                    Logger.LogInvalidValue(file, setting, "Has to be a number!", setting.Str(2));
+                    continue;
+                }
+                string nick = setting.Str(1).Trim();
+                if ((flags & 0x40) != 0)
+                {
+                    if (nick.Length > 15)
+                        Logger.LogInvalidValue(file, setting, "The game cuts faction nicknames off after 15 characters here, so it looks up " + nick.Substring(0, 15) + "!", nick);
+                    else if (!UniverseChecks.FactionExists(nick))
+                        Logger.LogInvalidValue(file, setting, "Faction doesn't exist! Flag 0x40 (64) makes this a faction.", nick);
+                }
+                else if (!UniverseChecks.SystemExists(nick) && !UniverseChecks.BaseExists(nick) && !UniverseChecks.ObjectOrZoneExistsAnywhere(nick))
+                    Logger.LogInvalidValue(file, setting, "No system, base, object or zone has this nickname, so the line does nothing!", nick, LogLevel.warning);
+            }
+        }
+
+        // The story stages of a rumor, which content.dll compares case-insensitively (the table at 0x6fce5d0)
+        private static readonly string[] rumorStages =
+        {
+            "base_0_rank", "mission_01a_loaded", "mission_01a_accepted", "mission_01b_loaded", "mission_01b_accepted", "freetime_01_02",
+            "mission_02_loaded", "mission_02_accepted", "freetime_02_03", "mission_03_loaded", "mission_03_accepted", "freetime_03_04",
+            "mission_04_loaded", "mission_04_accepted", "freetime_04_05", "mission_05_loaded", "mission_05_accepted", "freetime_05_06",
+            "mission_06_loaded", "mission_06_accepted", "freetime_06_07", "mission_07_loaded", "mission_07_accepted", "freetime_07_08",
+            "mission_08_loaded", "mission_08_accepted", "freetime_08_09", "mission_09_loaded", "mission_09_accepted", "freetime_09_10",
+            "mission_10_loaded", "mission_10_accepted", "freetime_10_11", "mission_11_loaded", "mission_11_accepted", "freetime_11_12",
+            "mission_12_loaded", "mission_12_accepted", "freetime_12_13", "mission_13_loaded", "mission_13_accepted", "mission_end"
+        };
+
+        /// <summary>
+        /// mbases.ini: the factions, characters and rooms of each base. Content.dll (FUN_06eaa820) reads the first
+        /// [MBase] whose nickname is the base, and the sections after it up to the next [MBase]. A fixture looks its
+        /// [GF_NPC] up while the file is read, so the NPC has to come first.
         /// </summary>
         private static void CheckMBasesFile(string file)
         {
-            foreach (var setting in Load(file).sections.SelectMany(s => s.settings))
+            var seenBases = new Dictionary<string, int>();
+            string baseNick = null;     // The base of the current [MBase], or null if the game doesn't read it
+            HashSet<string> rooms = null;
+            var npcs = new HashSet<string>();
+            var allNpcs = new HashSet<string>();
+            var factionNpcs = new List<FLDataFile.Setting>();
+            Action endBase = () =>
             {
-                if (setting.NumValues() == 0)
-                    continue;
-                switch (setting.settingName.ToLower())
+                foreach (var setting in factionNpcs.Where(s => !allNpcs.Contains(s.Str(0).Trim().ToLower())))
+                    Logger.LogInvalidValue(file, setting, "No [GF_NPC] of this base has this nickname, so the line does nothing!");
+                npcs.Clear();
+                allNpcs.Clear();
+                factionNpcs.Clear();
+            };
+
+            FLDataFile ini = Load(file);
+            foreach (var section in ini.sections)
+            {
+                string type = section.sectionName.ToLower();
+                if (type == "mbase")
                 {
-                    case "local_faction": // [MBase]
-                    case "faction":       // [BaseFaction]
-                    case "affiliation":   // [GF_NPC]
-                    case "bribe":         // [GF_NPC] bribe = faction, price, ids
-                        CheckFaction(file, setting);
-                        break;
+                    endBase();
+                    var nickSetting = Util.TryGetSetting(section, "nickname");
+                    baseNick = nickSetting == null || nickSetting.NumValues() == 0 ? null : nickSetting.Str(0).Trim().ToLower();
+                    rooms = null;
+                    if (baseNick == null)
+                        Logger.LogSettingNotFound(file, Util.GetSectionIdentifier(section), section.sectionName, "nickname");
+                    else if (!UniverseChecks.BaseExists(baseNick))
+                    {
+                        Logger.LogInvalidValue(file, nickSetting, "Base doesn't exist! The game never reads this [MBase].");
+                        baseNick = null;
+                    }
+                    else if (seenBases.ContainsKey(baseNick))
+                    {
+                        Logger.LogDublicateValue(file, nickSetting, "Duplicate [MBase]! The game only reads the first one of a base, at line " + seenBases[baseNick]);
+                        baseNick = null;
+                    }
+                    else
+                    {
+                        seenBases[baseNick] = nickSetting.LineNumber;
+                        rooms = UniverseChecks.GetBaseRooms(baseNick);
+                    }
+                }
+                else if (type == "gf_npc")
+                {
+                    var nickSetting = Util.TryGetSetting(section, "nickname");
+                    if (nickSetting != null && nickSetting.NumValues() > 0)
+                    {
+                        npcs.Add(nickSetting.Str(0).Trim().ToLower());
+                        allNpcs.Add(nickSetting.Str(0).Trim().ToLower());
+                    }
+                }
+
+                foreach (var setting in section.settings.Where(s => s.NumValues() > 0))
+                {
+                    string key = setting.settingName.ToLower();
+                    string value = setting.Str(0).Trim();
+                    switch (type + ":" + key)
+                    {
+                        case "mbase:local_faction":
+                        case "basefaction:faction":
+                        case "gf_npc:affiliation":
+                        case "gf_npc:bribe": // bribe = faction, price, ids
+                            CheckFaction(file, setting);
+                            if (key == "bribe")
+                            {
+                                int price;
+                                if (setting.NumValues() < 3)
+                                    Logger.LogArgCount(file, setting, 3);
+                                else if (int.TryParse(setting.Str(1).Trim(), out price) && price == 0)
+                                    Logger.LogInvalidValue(file, setting, "The game ignores a bribe that costs 0!", setting.Str(1));
+                                else
+                                    CheckTextIds(file, setting, 2, "Text doesn't exist!", LogLevel.error);
+                            }
+                            break;
+                        case "basefaction:npc": // Gives the NPC the faction as its affiliation
+                            factionNpcs.Add(setting);
+                            break;
+                        case "gf_npc:base_appr":
+                            if (!CharacterChecks.CostumeExists(value))
+                                Logger.LogInvalidValue(file, setting, "Costume doesn't exist! The game ignores the line.");
+                            break;
+                        case "gf_npc:head":
+                        case "gf_npc:body":
+                        case "gf_npc:lefthand":
+                        case "gf_npc:righthand":
+                        case "gf_npc:accessory":
+                            if (!CharacterChecks.BodypartExists(value, key))
+                                Logger.LogInvalidValue(file, setting, "Has to be a [" + key + "] of the bodyparts files!");
+                            break;
+                        case "gf_npc:voice":
+                            if (!AudioChecks.VoiceExists(value))
+                                Logger.LogInvalidValue(file, setting, "Voice doesn't exist!");
+                            break;
+                        case "gf_npc:individual_name":
+                            CheckTextIds(file, setting, 0, "Text doesn't exist!", LogLevel.error);
+                            break;
+                        case "gf_npc:room": // pub::GF::FindLocation(base, room)
+                        case "mroom:nickname":
+                            if (rooms != null && !rooms.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, type == "mroom" ? "The base has no such room, so the game ignores this [MRoom]!" : "The base has no such room!");
+                            break;
+                        case "mroom:fixture": // fixture = npc, placement, fidget, role
+                            if (setting.NumValues() < 4)
+                                Logger.LogArgCount(file, setting, 4);
+                            if (!npcs.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, allNpcs.Contains(value.ToLower()) || ini.sections.SkipWhile(s => s != section).Any(s => s.sectionName.ToLower() == "gf_npc" && Util.TryGetStrSetting(s, "nickname") != null && Util.TryGetStrSetting(s, "nickname").Trim().ToLower() == value.ToLower())
+                                    ? "The [GF_NPC] has to come before this [MRoom]! The game looks it up while it reads the file, and ignores the fixture otherwise."
+                                    : "No [GF_NPC] of this base has this nickname, so the game ignores the fixture!");
+                            else
+                            {
+                                // The placement is looked up in the room, so the room has to be known by then. The NPC
+                                // placements come from the room's scenes, not its INI, so they aren't checked.
+                                var roomNick = Util.TryGetSetting(section, "nickname");
+                                if (roomNick == null || roomNick.LineNumber > setting.LineNumber)
+                                    Logger.LogInvalidValue(file, setting, "Has to come after the nickname of the [MRoom]! The game ignores the fixture otherwise.");
+                            }
+                            break;
+                        case "gf_npc:know": // know = ids, ids, price, reputation level
+                            if (setting.NumValues() < 4)
+                            {
+                                Logger.LogArgCount(file, setting, 4);
+                                break;
+                            }
+                            CheckTextIds(file, setting, 0, "Text doesn't exist!", LogLevel.error);
+                            CheckTextIds(file, setting, 1, "Text doesn't exist!", LogLevel.error);
+                            int knowLevel;
+                            if (!int.TryParse(setting.Str(3).Trim(), out knowLevel) || knowLevel < 0 || knowLevel > 3)
+                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! The game ignores the line otherwise.", setting.Str(3));
+                            break;
+                        case "gf_npc:rumor": // rumor = from stage, to stage, reputation level, ids
+                        case "gf_npc:rumor_type2":
+                            if (setting.NumValues() < 4)
+                            {
+                                Logger.LogArgCount(file, setting, 4);
+                                break;
+                            }
+                            if (!rumorStages.Contains(value, StringComparer.OrdinalIgnoreCase))
+                                Logger.LogInvalidValue(file, setting, "Not a story stage! The game then uses the address of its INI reader as the stage, so it never offers the rumor.", value);
+                            else if (!rumorStages.Contains(setting.Str(1).Trim(), StringComparer.OrdinalIgnoreCase))
+                                Logger.LogInvalidValue(file, setting, "Not a story stage! The game then uses the first stage, so it only offers the rumor at that stage.", setting.Str(1));
+                            // The game compares the player's reputation with a table of 4 thresholds (0, 0.2, 0.4, 0.6 at
+                            // 0x6fce350). After it comes a double that is set to 15.0: as a float, its low half is 0 and
+                            // its high half 2.72.
+                            int rumorLevel;
+                            if (!int.TryParse(setting.Str(2).Trim(), out rumorLevel))
+                                Logger.LogInvalidValue(file, setting, "Has to be a number!", setting.Str(2));
+                            else if (rumorLevel == 4)
+                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! For 4 the game reads the value after its table, which is 0, so the rumor needs as little reputation as at level 0.", setting.Str(2), LogLevel.warning);
+                            else if (rumorLevel < 0 || rumorLevel > 3)
+                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! The game reads past its table of reputation thresholds otherwise.", setting.Str(2));
+                            for (int i = 3; i < setting.NumValues() && setting.Str(i).Trim() != ""; i++)
+                                CheckTextIds(file, setting, i, "Text doesn't exist!", LogLevel.error);
+                            break;
+                    }
                 }
             }
+            endBase();
         }
 
         /// <summary>
@@ -528,9 +737,12 @@ namespace FLScanIE
                                 Logger.LogFileNotFound(file, setting);
                             break;
                         case "trigger:act_acttrig":
-                        case "trigger:act_deacttrig":
                             if (!triggers.Contains(value.ToLower()))
                                 Logger.LogInvalidValue(file, setting, "Trigger doesn't exist!");
+                            break;
+                        case "trigger:act_deacttrig":
+                            if (!triggers.Contains(value.ToLower()))
+                                Logger.LogInvalidValue(file, setting, "Trigger doesn't exist! The game does nothing then.");
                             break;
                         case "trigger:act_spawnsolar":
                             CheckExactReference(file, setting, value, solars, "MsnSolar");

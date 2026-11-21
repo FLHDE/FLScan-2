@@ -29,6 +29,9 @@ namespace FLScanIE
         // The system and object (lowercase) each jump gate or hole leads to. Key: "system:object"
         private static Dictionary<string, string[]> jumpTargets;
 
+        //                         base    its [Room] nicknames (all lowercase), or null if unknown
+        private static Dictionary<string, HashSet<string>> baseRooms;
+
         // The game reads these files instead of computing the routes itself
         private static readonly string[] shortestPathFiles =
             { @"universe\shortest_illegal_path.ini", @"universe\shortest_legal_path.ini", @"universe\systems_shortest_path.ini" };
@@ -964,6 +967,7 @@ asteroid_loot_commodity = commodity_gold*/
             var baseNicks = new Dictionary<string, List<string>>();
             var objectNicks = new Dictionary<string, Dictionary<string, List<string>>>();
             baseFiles = new Dictionary<string, string>();
+            baseRooms = new Dictionary<string, HashSet<string>>();
             systemConnections = new Dictionary<string, HashSet<string>>();
             jumpTargets = new Dictionary<string, string[]>();
 
@@ -1165,6 +1169,33 @@ asteroid_loot_commodity = commodity_gold*/
         {
             nick = nick.ToLower();
             return allBaseNicks.Contains(nick);
+        }
+
+        /// <summary>
+        /// True if an object or zone of any system has this nickname.
+        /// </summary>
+        public static bool ObjectOrZoneExistsAnywhere(string nick)
+        {
+            nick = nick.ToLower();
+            return objectNicks.Values.Any(things => things.Where(t => t.Key == "object" || t.Key == "zone").Any(t => t.Value.Contains(nick)));
+        }
+
+        /// <summary>
+        /// The [Room] nicknames of a base (lowercase), or null if they're unknown (the base has no file, or it
+        /// doesn't exist).
+        /// </summary>
+        public static HashSet<string> GetBaseRooms(string baseNick)
+        {
+            baseNick = baseNick.ToLower();
+            HashSet<string> rooms;
+            if (baseRooms.TryGetValue(baseNick, out rooms))
+                return rooms;
+            string baseFile;
+            FLDataFile ini = baseFiles.TryGetValue(baseNick, out baseFile) ? Checker.LoadIni(baseFile) : null;
+            if (ini != null)
+                rooms = new HashSet<string>(ini.GetSettings("Room", "nickname").Where(s => s.NumValues() > 0).Select(s => s.Str(0).Trim().ToLower()));
+            baseRooms[baseNick] = rooms;
+            return rooms;
         }
     }
 }

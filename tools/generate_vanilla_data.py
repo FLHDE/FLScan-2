@@ -9,6 +9,9 @@ Writes:
   defines are still known. When a parse function starts reading a new key, add it to KEPT_KEYS and regenerate.
 - vanilla_hardpoints.txt: one line per vanilla model (.cmp, .3db, .dfm): its path relative to DATA, followed by its
   hardpoint names, separated by tabs. Used for hardpoint checks on models a mod doesn't ship.
+- vanilla_pilot_refs.txt: one line per vanilla INI that refers to pilots or pilot blocks: its path relative to DATA,
+  followed by the nicknames (lowercase) of the pilots and blocks it refers to, separated by tabs. A value of any key
+  but nickname counts. Used to tell whether anything uses a duplicate pilot or block when a mod doesn't ship a file.
 """
 import os
 import struct
@@ -152,6 +155,22 @@ def main():
             lines.append('[%s]' % section)
             lines.extend('%s = %s' % (k, ', '.join(v)) for k, v in entries)
     with open(os.path.join(out, 'vanilla_inis.txt'), 'w', encoding='latin-1', newline='\r\n') as f:
+        f.write('\n'.join(lines) + '\n')
+
+    pilots = set()
+    for rel in (r'missions\pilots_population.ini', r'missions\pilots_story.ini'):
+        for section, entries in read_ini(os.path.join(data, rel)):
+            pilots.update(v[0].strip().lower() for k, v in entries if k.lower() == 'nickname' and v)
+    lines = []
+    for rel in inis:
+        refs = set()
+        for section, entries in read_ini(os.path.join(data, rel)):
+            for k, v in entries:
+                if k.lower() != 'nickname':
+                    refs.update(x.strip().lower() for x in v if x.strip().lower() in pilots)
+        if refs:
+            lines.append('\t'.join([rel] + sorted(refs)))
+    with open(os.path.join(out, 'vanilla_pilot_refs.txt'), 'w', encoding='latin-1', newline='\r\n') as f:
         f.write('\n'.join(lines) + '\n')
 
     lines = []

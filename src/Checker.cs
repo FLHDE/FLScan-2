@@ -39,6 +39,8 @@ namespace FLScanIE
         private static Dictionary<string, string> vanillaInis;
         // Hardpoint names of the vanilla models, by lowercase path relative to DATA
         private static Dictionary<string, string[]> vanillaHardpoints;
+        // The pilots and pilot blocks (lowercase) each vanilla INI refers to, by lowercase path relative to DATA
+        private static Dictionary<string, string[]> vanillaPilotRefs;
 
         public static FLDataFile confIni;
 
@@ -166,7 +168,37 @@ namespace FLScanIE
                 vanillaFiles.Add(file.Trim().ToLowerInvariant());
             }
 
-            return ParseVanillaInis() && ParseVanillaHardpoints();
+            return ParseVanillaInis() && ParseVanillaHardpoints() && ParseVanillaPilotRefs();
+        }
+
+        private static bool ParseVanillaPilotRefs()
+        {
+            string path = GetAppFilePath("vanilla_pilot_refs.txt");
+            if (!File.Exists(path))
+            {
+                Logger.ELog("Vanilla pilot references not found: " + path);
+                return false;
+            }
+
+            vanillaPilotRefs = new Dictionary<string, string[]>();
+            foreach (string line in File.ReadAllLines(path, Encoding.GetEncoding("ISO-8859-1")))
+            {
+                string[] parts = line.Split('\t');
+                if (parts[0].Length != 0)
+                    vanillaPilotRefs[parts[0].ToLowerInvariant()] = parts.Skip(1).ToArray();
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// The pilots and pilot blocks (lowercase) that the vanilla INIs the mod doesn't ship refer to, or none if
+        /// vanilla files aren't assumed to exist.
+        /// </summary>
+        internal static IEnumerable<string> PilotRefsOfMissingVanillaFiles()
+        {
+            if (!assumeVanillaFilesExist)
+                return new string[0];
+            return vanillaPilotRefs.Where(f => !FileExistsOnDisk(f.Key)).SelectMany(f => f.Value);
         }
 
         private static bool ParseVanillaInis()
