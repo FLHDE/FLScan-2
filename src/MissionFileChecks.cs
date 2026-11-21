@@ -341,7 +341,7 @@ namespace FLScanIE
                             if (!int.TryParse(setting.Str(2).Trim(), out rumorLevel))
                                 Logger.LogInvalidValue(file, setting, "Has to be a number!", setting.Str(2));
                             else if (rumorLevel == 4)
-                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! For 4 the game reads the value after its table, which is 0, so the rumor needs as little reputation as at level 0.", setting.Str(2), LogLevel.warning);
+                                Logger.LogInvalidValue(file, setting, "Reputation levels are 0 to 3. For 4 the game reads past its table and gets 0, so this works like level 0; use 0 instead.", setting.Str(2), LogLevel.warning);
                             else if (rumorLevel < 0 || rumorLevel > 3)
                                 Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! The game reads past its table of reputation thresholds otherwise.", setting.Str(2));
                             for (int i = 3; i < setting.NumValues() && setting.Str(i).Trim() != ""; i++)
