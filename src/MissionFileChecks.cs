@@ -197,14 +197,12 @@ namespace FLScanIE
             string baseNick = null;     // The base of the current [MBase], or null if the game doesn't read it
             HashSet<string> rooms = null;
             var npcs = new HashSet<string>();
-            var allNpcs = new HashSet<string>();
             var factionNpcs = new List<FLDataFile.Setting>();
             Action endBase = () =>
             {
-                foreach (var setting in factionNpcs.Where(s => !allNpcs.Contains(s.Str(0).Trim().ToLower())))
+                foreach (var setting in factionNpcs.Where(s => !npcs.Contains(s.Str(0).Trim().ToLower())))
                     Logger.LogInvalidValue(file, setting, "No [GF_NPC] of this base has this nickname, so the line does nothing!");
                 npcs.Clear();
-                allNpcs.Clear();
                 factionNpcs.Clear();
             };
 
@@ -227,7 +225,8 @@ namespace FLScanIE
                     }
                     else if (seenBases.ContainsKey(baseNick))
                     {
-                        Logger.LogDublicateValue(file, nickSetting, "Duplicate [MBase]! The game only reads the first one of a base, at line " + seenBases[baseNick]);
+                        Logger.LogDublicateValue(file, nickSetting, "Duplicate [MBase]! The game only reads the first one of a base"
+                            + (seenBases[baseNick] > 0 ? ", at line " + seenBases[baseNick] : ""));
                         baseNick = null;
                     }
                     else
@@ -242,7 +241,6 @@ namespace FLScanIE
                     if (nickSetting != null && nickSetting.NumValues() > 0)
                     {
                         npcs.Add(nickSetting.Str(0).Trim().ToLower());
-                        allNpcs.Add(nickSetting.Str(0).Trim().ToLower());
                     }
                 }
 
@@ -299,9 +297,15 @@ namespace FLScanIE
                             if (setting.NumValues() < 4)
                                 Logger.LogArgCount(file, setting, 4);
                             if (!npcs.Contains(value.ToLower()))
-                                Logger.LogInvalidValue(file, setting, allNpcs.Contains(value.ToLower()) || ini.sections.SkipWhile(s => s != section).Any(s => s.sectionName.ToLower() == "gf_npc" && Util.TryGetStrSetting(s, "nickname") != null && Util.TryGetStrSetting(s, "nickname").Trim().ToLower() == value.ToLower())
+                            {
+                                // A [GF_NPC] of the same [MBase] that comes after this section
+                                bool definedLater = ini.sections.SkipWhile(s => s != section).Skip(1)
+                                    .TakeWhile(s => s.sectionName.ToLower() != "mbase")
+                                    .Any(s => s.sectionName.ToLower() == "gf_npc" && string.Equals((Util.TryGetStrSetting(s, "nickname") ?? "").Trim(), value, StringComparison.OrdinalIgnoreCase));
+                                Logger.LogInvalidValue(file, setting, definedLater
                                     ? "The [GF_NPC] has to come before this [MRoom]! The game looks it up while it reads the file, and ignores the fixture otherwise."
                                     : "No [GF_NPC] of this base has this nickname, so the game ignores the fixture!");
+                            }
                             else
                             {
                                 // The placement is looked up in the room, so the room has to be known by then. The NPC
@@ -321,7 +325,7 @@ namespace FLScanIE
                             CheckTextIds(file, setting, 1, "Text doesn't exist!", LogLevel.error);
                             int knowLevel;
                             if (!int.TryParse(setting.Str(3).Trim(), out knowLevel) || knowLevel < 0 || knowLevel > 3)
-                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! The game ignores the line otherwise.", setting.Str(3));
+                                Logger.LogInvalidValue(file, setting, "Reputation levels are 0 to 3! The game ignores the line otherwise.", setting.Str(3));
                             break;
                         case "gf_npc:rumor": // rumor = from stage, to stage, reputation level, ids
                         case "gf_npc:rumor_type2":
@@ -334,16 +338,24 @@ namespace FLScanIE
                                 Logger.LogInvalidValue(file, setting, "Not a story stage! The game then uses the address of its INI reader as the stage, so it never offers the rumor.", value);
                             else if (!rumorStages.Contains(setting.Str(1).Trim(), StringComparer.OrdinalIgnoreCase))
                                 Logger.LogInvalidValue(file, setting, "Not a story stage! The game then uses the first stage, so it only offers the rumor at that stage.", setting.Str(1));
-                            // The game compares the player's reputation with a table of 4 thresholds (0, 0.2, 0.4, 0.6 at
-                            // 0x6fce350). After it comes a double that is set to 15.0: as a float, its low half is 0 and
-                            // its high half 2.72.
+                            // The game (0x06ed4100) skips the rumor if the player's reputation is below a table of 4
+                            // thresholds (0, 0.2, 0.4, 0.6 at 0x6fce350). After it comes a double that is set to 15.0: as
+                            // a float, its low half is 0 and its high half 2.72. The rumor's weight is 64 if its stages
+                            // lie inside the story (after base_0_rank, before mission_end), and (level + 1) * 5 otherwise.
                             int rumorLevel;
                             if (!int.TryParse(setting.Str(2).Trim(), out rumorLevel))
                                 Logger.LogInvalidValue(file, setting, "Has to be a number!", setting.Str(2));
                             else if (rumorLevel == 4)
-                                Logger.LogInvalidValue(file, setting, "Reputation levels are 0 to 3. For 4 the game reads past its table and gets 0, so this works like level 0; use 0 instead.", setting.Str(2), LogLevel.warning);
+                            {
+                                bool insideStory = !value.Equals("base_0_rank", StringComparison.OrdinalIgnoreCase)
+                                    && !setting.Str(1).Trim().Equals("mission_end", StringComparison.OrdinalIgnoreCase);
+                                Logger.LogInvalidValue(file, setting, insideStory
+                                    ? "Reputation levels are 0 to 3. For 4 the game reads past its table and gets 0, so this works like level 0; use 0 instead."
+                                    : "Reputation levels are 0 to 3. For 4 the game reads past its table and gets 0, so the rumor needs as little reputation as at level 0, but is picked five times as often.",
+                                    setting.Str(2), LogLevel.warning);
+                            }
                             else if (rumorLevel < 0 || rumorLevel > 3)
-                                Logger.LogInvalidValue(file, setting, "The reputation levels are 0 to 3! The game reads past its table of reputation thresholds otherwise.", setting.Str(2));
+                                Logger.LogInvalidValue(file, setting, "Reputation levels are 0 to 3! The game reads outside its table of reputation thresholds otherwise.", setting.Str(2));
                             for (int i = 3; i < setting.NumValues() && setting.Str(i).Trim() != ""; i++)
                                 CheckTextIds(file, setting, i, "Text doesn't exist!", LogLevel.error);
                             break;
